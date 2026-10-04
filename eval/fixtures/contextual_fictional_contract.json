@@ -1,0 +1,67 @@
+{
+  "project": "Mi'yar",
+  "version": "fixture-v2",
+  "language": "ar",
+  "synthetic_test_data": true,
+  "knowledge_policy": {
+    "mode": "closed_approved_sources",
+    "note": "بيانات اختبار اصطناعية لاختبار T017 فقط. السيناريو كله وهمي: شركة «نَسيم» وعقد «لُجَين» و«باقة التمديد» لا وجود لها. لا تمثل مصادر حقيقية ولا أقوالًا فقهية، ولا يجوز تحميلها في التطبيق الحقيقي إطلاقًا."
+  },
+  "records": [
+    {
+      "source_id": "FIXTURE-C",
+      "topic": "عقد «لُجَين» الوهمي للتقسيط — معالجة عامة",
+      "category": "sale_installments",
+      "source_title": "مصدر اصطناعي للاختبار (FIXTURE-C) — ليس مرجعًا حقيقيًا",
+      "source_section": "قسم اصطناعي: المعالجة العامة لعقد لُجَين الوهمي",
+      "source_url": "https://fixtures.miyar.test/FIXTURE-C",
+      "source_type": "synthetic_test_fixture",
+      "approved": true,
+      "normalized_content": "[بيانات اختبار اصطناعية — كيان وعقد وهميان] سجل اختباري عام عن عقد «لُجَين» الوهمي للتقسيط من شركة «نَسيم» الوهمية، لا يتعرض لـ«باقة التمديد».",
+      "source_summary": "[اصطناعي] معالجة اختبارية عامة لعقد لُجَين الوهمي.",
+      "applicability_conditions": [
+        "عقد لُجَين للتقسيط"
+      ],
+      "must_not_generalize_to": [
+        "أي معاملة حقيقية أو كيان حقيقي"
+      ],
+      "retrieval_keywords": [
+        "لجين",
+        "عقد لجين",
+        "شركة نسيم",
+        "تقسيط"
+      ],
+      "default_response_state": "GROUNDED",
+      "notes": "بيانات اختبار اصطناعية. سجل عام؛ يبقى مرشحًا مسترجعًا حتى عند انطباق سجل أكثر تحديدًا."
+    },
+    {
+      "source_id": "FIXTURE-D",
+      "topic": "عقد «لُجَين» الوهمي مع «باقة التمديد» — معالجة مقيدة",
+      "category": "sale_installments",
+      "source_title": "مصدر اصطناعي للاختبار (FIXTURE-D) — ليس مرجعًا حقيقيًا",
+      "source_section": "قسم اصطناعي: المعالجة المقيدة بباقة التمديد الوهمية",
+      "source_url": "https://fixtures.miyar.test/FIXTURE-D",
+      "source_type": "synthetic_test_fixture",
+      "approved": true,
+      "normalized_content": "[بيانات اختبار اصطناعية — كيان وعقد وهميان] سجل اختباري مقيد بحالة واحدة: أن يكون العميل قد فعّل «باقة التمديد» الوهمية في عقد «لُجَين».",
+      "source_summary": "[اصطناعي] معالجة اختبارية مقيدة بتفعيل باقة التمديد في عقد لُجَين الوهمي.",
+      "applicability_conditions": [
+        "عقد لُجَين للتقسيط",
+        "العميل فعّل باقة التمديد"
+      ],
+      "must_not_generalize_to": [
+        "عقد لُجَين دون تفعيل باقة التمديد",
+        "أي معاملة حقيقية أو كيان حقيقي"
+      ],
+      "retrieval_keywords": [
+        "لجين",
+        "عقد لجين",
+        "باقة التمديد",
+        "تمديد الأقساط",
+        "شركة نسيم"
+      ],
+      "default_response_state": "GROUNDED",
+      "notes": "بيانات اختبار اصطناعية. لا يكون supporting إلا إذا ثبت صراحة أن العميل فعّل باقة التمديد."
+    }
+  ]
+}

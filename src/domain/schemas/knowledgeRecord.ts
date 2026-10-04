@@ -14,6 +14,17 @@ export const KbCategorySchema = z.enum(KB_CATEGORIES);
 /** Production IDs look like KB-001. Fixture IDs (FIXTURE-*) can never pass this. */
 export const PRODUCTION_SOURCE_ID = /^KB-\d{3}$/;
 
+/** Markers every synthetic fixture record carries; production rejects both. */
+export const SYNTHETIC_SOURCE_TYPE = "synthetic_test_fixture";
+export const SYNTHETIC_URL_HOST_SUFFIX = ".test";
+
+function isSyntheticRecord(record: { source_type: string; source_url: string }): boolean {
+  return (
+    record.source_type === SYNTHETIC_SOURCE_TYPE ||
+    new URL(record.source_url).hostname.endsWith(SYNTHETIC_URL_HOST_SUFFIX)
+  );
+}
+
 /**
  * A verbatim excerpt that a reviewer has checked against the original source.
  * Only an excerpt with verified=true may be shown to users as a quotation
@@ -137,6 +148,13 @@ export const KnowledgeBaseFileSchema = z
           message: `source_id ${record.source_id} is not a production ID`,
         });
       }
+      if (isSyntheticRecord(record)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["records"],
+          message: `record ${record.source_id} is synthetic test data`,
+        });
+      }
     }
   });
 export type KnowledgeBaseFile = z.infer<typeof KnowledgeBaseFileSchema>;
@@ -155,6 +173,13 @@ export const FixtureKnowledgeBaseFileSchema = z
           code: "custom",
           path: ["records"],
           message: `fixture record ${record.source_id} must not use a production ID`,
+        });
+      }
+      if (record.source_type !== SYNTHETIC_SOURCE_TYPE || !new URL(record.source_url).hostname.endsWith(SYNTHETIC_URL_HOST_SUFFIX)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["records"],
+          message: `fixture record ${record.source_id} must use source_type ${SYNTHETIC_SOURCE_TYPE} and a ${SYNTHETIC_URL_HOST_SUFFIX} URL`,
         });
       }
     }

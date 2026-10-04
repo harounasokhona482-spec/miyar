@@ -41,6 +41,18 @@ describe("production / fixture separation", () => {
     expect(KnowledgeBaseFileSchema.safeParse(kb).success).toBe(false);
   });
 
+  it("rejects a record with the synthetic source_type even under a production ID", () => {
+    const kb = clone(productionKb);
+    kb.records[0]!.source_type = "synthetic_test_fixture";
+    expect(KnowledgeBaseFileSchema.safeParse(kb).success).toBe(false);
+  });
+
+  it("rejects a record hosted on the reserved .test domain", () => {
+    const kb = clone(productionKb);
+    kb.records[0]!.source_url = "https://fixtures.miyar.test/KB-001";
+    expect(KnowledgeBaseFileSchema.safeParse(kb).success).toBe(false);
+  });
+
   it("rejects a file marked as synthetic test data", () => {
     expect(KnowledgeBaseFileSchema.safeParse({ ...clone(productionKb), synthetic_test_data: true }).success).toBe(false);
   });

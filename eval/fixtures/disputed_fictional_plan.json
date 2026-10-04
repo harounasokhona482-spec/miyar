@@ -1,0 +1,96 @@
+{
+  "project": "Mi'yar",
+  "version": "fixture-v2",
+  "language": "ar",
+  "synthetic_test_data": true,
+  "knowledge_policy": {
+    "mode": "closed_approved_sources",
+    "note": "بيانات اختبار اصطناعية لاختبار T016 فقط. السيناريو كله وهمي: متجر «المدار» وخطة «سَرْو» و«وحدات سَرْو» لا وجود لها. لا تمثل مصادر حقيقية ولا أقوالًا فقهية، ولا يجوز تحميلها في التطبيق الحقيقي إطلاقًا."
+  },
+  "records": [
+    {
+      "source_id": "FIXTURE-A",
+      "topic": "تحويل الأقساط المتبقية إلى «وحدات سَرْو» في خطة «سَرْو» الوهمية",
+      "category": "sale_installments",
+      "source_title": "مصدر اصطناعي للاختبار (FIXTURE-A) — ليس مرجعًا حقيقيًا",
+      "source_section": "قسم اصطناعي: المعالجة الاختبارية (أ) لخطة سَرْو الوهمية",
+      "source_url": "https://fixtures.miyar.test/FIXTURE-A",
+      "source_type": "synthetic_test_fixture",
+      "approved": true,
+      "normalized_content": "[بيانات اختبار اصطناعية — كيان وعقد وهميان] سجل اختباري عن خطة «سَرْو» الوهمية للتقسيط من متجر «المدار» الوهمي، التي تتيح تحويل الأقساط المتبقية إلى «وحدات سَرْو». يعالجها السجل بالمعالجة الاختبارية (أ).",
+      "source_summary": "[اصطناعي] المعالجة الاختبارية (أ) لتحويل الأقساط إلى وحدات سَرْو الوهمية.",
+      "applicability_conditions": [
+        "خطة سَرْو للتقسيط",
+        "تحويل الأقساط المتبقية إلى وحدات سَرْو"
+      ],
+      "must_not_generalize_to": [
+        "أي معاملة حقيقية أو كيان حقيقي"
+      ],
+      "retrieval_keywords": [
+        "سرو",
+        "خطة سرو",
+        "وحدات سرو",
+        "متجر المدار",
+        "تحويل الأقساط"
+      ],
+      "default_response_state": "DISPUTED",
+      "notes": "بيانات اختبار اصطناعية. موقفها يخالف FIXTURE-B عمدًا على نفس issue_id."
+    },
+    {
+      "source_id": "FIXTURE-B",
+      "topic": "تحويل الأقساط المتبقية إلى «وحدات سَرْو» في خطة «سَرْو» الوهمية",
+      "category": "sale_installments",
+      "source_title": "مصدر اصطناعي للاختبار (FIXTURE-B) — ليس مرجعًا حقيقيًا",
+      "source_section": "قسم اصطناعي: المعالجة الاختبارية (ب) لخطة سَرْو الوهمية",
+      "source_url": "https://fixtures.miyar.test/FIXTURE-B",
+      "source_type": "synthetic_test_fixture",
+      "approved": true,
+      "normalized_content": "[بيانات اختبار اصطناعية — كيان وعقد وهميان] سجل اختباري عن الخطة الوهمية نفسها، يعالجها بالمعالجة الاختبارية (ب) المختلفة عن (أ).",
+      "source_summary": "[اصطناعي] المعالجة الاختبارية (ب) لتحويل الأقساط إلى وحدات سَرْو الوهمية.",
+      "applicability_conditions": [
+        "خطة سَرْو للتقسيط",
+        "تحويل الأقساط المتبقية إلى وحدات سَرْو"
+      ],
+      "must_not_generalize_to": [
+        "أي معاملة حقيقية أو كيان حقيقي"
+      ],
+      "retrieval_keywords": [
+        "سرو",
+        "خطة سرو",
+        "وحدات سرو",
+        "متجر المدار",
+        "تحويل الأقساط"
+      ],
+      "default_response_state": "DISPUTED",
+      "notes": "بيانات اختبار اصطناعية. موقفها يخالف FIXTURE-A عمدًا على نفس issue_id."
+    }
+  ],
+  "positions": [
+    {
+      "position_id": "FIXTURE-POS-A",
+      "issue_id": "FIXTURE-ISSUE-SARW-UNITS",
+      "source_id": "FIXTURE-A",
+      "position_summary": "[اصطناعي] المعالجة الاختبارية (أ): نتيجة اختبارية أولى لخطة سَرْو الوهمية.",
+      "context": {
+        "applies_when": [
+          "خطة سَرْو للتقسيط",
+          "تحويل الأقساط المتبقية إلى وحدات سَرْو"
+        ],
+        "notes": "موقف اصطناعي لكيان وهمي، للاختبار فقط."
+      }
+    },
+    {
+      "position_id": "FIXTURE-POS-B",
+      "issue_id": "FIXTURE-ISSUE-SARW-UNITS",
+      "source_id": "FIXTURE-B",
+      "position_summary": "[اصطناعي] المعالجة الاختبارية (ب): نتيجة اختبارية ثانية مختلفة عن (أ) لخطة سَرْو الوهمية.",
+      "context": {
+        "applies_when": [
+          "خطة سَرْو للتقسيط",
+          "تحويل الأقساط المتبقية إلى وحدات سَرْو"
+        ],
+        "notes": "موقف اصطناعي لكيان وهمي، للاختبار فقط."
+      }
+    }
+  ]
+}
