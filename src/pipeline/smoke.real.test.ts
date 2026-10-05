@@ -63,6 +63,25 @@ describe.skipIf(!hasKey)("real OpenAI smoke tests", () => {
     });
   }
 
+  // Multi-turn conversations, played with the benchmark's own replies: every turn must reach that
+  // turn's accepted state, and each clarification must come at its expected round.
+  for (const id of ["T020", "T022", "T023"]) {
+    it(`${id} (×${REPEAT}) multi-turn: every turn reaches its accepted state`, async () => {
+      const turns = caseOf(id).turns;
+      for (let i = 0; i < REPEAT; i++) {
+        currentLabel = `${id}#${i + 1}`;
+        const out = await conversation(id, turns.slice(1).map((t) => t.user_message));
+        const states = out.map((r) => r.state);
+        expect(states.length, `${id} run ${i + 1}: stopped early with ${states.join(" → ")}`).toBe(turns.length);
+        out.forEach((r, k) => {
+          expect(turns[k]!.accepted_states, `${id} run ${i + 1} turn ${k + 1}: ${states.join(" → ")}`).toContain(r.state);
+          const round = turns[k]!.expected_clarification_round;
+          if (round && r.state === "NEEDS_CLARIFICATION") expect(r.clarification.round, `${id} run ${i + 1} turn ${k + 1}: round`).toBe(round);
+        });
+      }
+    });
+  }
+
   it("T009 → ownership reply → structural GROUNDED", async () => {
     currentLabel = "T009→T021";
     const turns = await conversation("T009", [caseOf("T021").turns[1]!.user_message]);
