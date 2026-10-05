@@ -9,6 +9,7 @@ import {
   UNSUPPORTED_LANGUAGE_MESSAGE,
 } from "../domain/messages";
 import { ApiResponseSchema, type ApiResponse } from "../domain/schemas/apiResponse";
+import { verifyState } from "../server/stateToken";
 import { userMessageOf } from "./extraction";
 import { handleMiyarRequest, type LogEntry, type OrchestratorDeps } from "./orchestrator";
 import { CLARIFICATION_REPLIES, caseOf } from "./testdata/benchmarkHarness";
@@ -176,6 +177,43 @@ describe("end-to-end with the fake provider", () => {
     const q = expectState((await ask({ message: first("T020") }, d)).response, "NEEDS_CLARIFICATION");
     const a = await ask({ message: caseOf("T020").turns[1]!.user_message, state_token: q.state_token }, d);
     expect(a.response.state).toBe("INSUFFICIENT_EVIDENCE");
+  });
+});
+
+describe("model output quirks seen in real runs", () => {
+  it("T009 with relationship_type {value: «unknown»} still asks the ownership question (no TECHNICAL_ERROR)", async () => {
+    const t = structuredClone(EXTRACTION_RESPONSES.T009!);
+    t.relationship_type = { value: "unknown", provenance: "unknown" };
+    const d = deps(e2eProvider({ transaction_extraction: () => JSON.stringify(t) }));
+    const q = expectState((await ask({ message: first("T009") }, d)).response, "NEEDS_CLARIFICATION");
+    expect(q.clarification.question).toBe("هل الجهة الممولة تشتري السلعة وتملكها قبل أن تبيعها لك؟");
+  });
+
+  it.each([
+    ["option: مبلغ ثابت مقابل خدمة محددة", "مبلغ ثابت مقابل خدمة محددة"],
+    ["option: تتغير بحسب قيمة التمويل أو مدة السداد", "تتغير بحسب قيمة التمويل أو مدة السداد"],
+    ["free text in the user's words", caseOf("T020").turns[1]!.user_message],
+  ])("T020: once the fee's nature is established (%s), the evidence gate stops — no further question", async (_how, reply) => {
+    const provider = e2eProvider();
+    const d = deps(provider);
+    const q = expectState((await ask({ message: first("T020") }, d)).response, "NEEDS_CLARIFICATION");
+    // Another fact is still open when the fee question is answered…
+    const before = verifyState(q.state_token, SECRET, Date.now());
+    expect(before.ok && before.payload.transaction.missing_information).toContain("deferred_price_fixed_at_contract");
+    // …yet no approved record covers the fee, so the gate abstains instead of asking about it.
+    const a = await ask({ message: reply, state_token: q.state_token }, d);
+    expect(a.response.state).toBe("INSUFFICIENT_EVIDENCE");
+    expect(a.meta.error_code).toBe("no_supporting_source");
+    expect(provider.calls.some((c) => c.task === "grounded_generation")).toBe(false);
+  });
+
+  it("T020: a reply value given as a label (not the user's words) is never accepted as the fee's nature", async () => {
+    const reply = caseOf("T020").turns[1]!.user_message;
+    const label = JSON.stringify({ "fees.type": { value: "fixed_monthly", provenance: "explicit", evidence_span: reply } });
+    const d = deps(e2eProvider({ clarification_extraction: () => label }));
+    const q = expectState((await ask({ message: first("T020") }, d)).response, "NEEDS_CLARIFICATION");
+    const a = expectState((await ask({ message: reply, state_token: q.state_token }, d)).response, "NEEDS_CLARIFICATION");
+    expect(a.clarification.round).toBe(2);
   });
 });
 

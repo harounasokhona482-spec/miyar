@@ -8,6 +8,7 @@ import { isEstablishedFact, type Transaction } from "../domain/schemas/transacti
 import {
   buildExtractionRequest,
   establishedFactPaths,
+  extractClarificationAnswer,
   extractTransaction,
   listExtractedFields,
   setExtractedField,
@@ -282,6 +283,34 @@ describe("fail-closed behaviour", () => {
     for (const edit of cases) {
       expectTechnicalError(await extractTransaction(messageOf("T001"), editedCase("T001", edit)), "extraction_schema_violation");
     }
+  });
+
+  it("the enum placeholder «unknown» on an unknown relationship_type (seen from the real model) becomes null, not a TECHNICAL_ERROR", async () => {
+    const provider = editedCase("T009", (t) => {
+      t.relationship_type = { value: "unknown", provenance: "unknown" };
+    });
+    const { transaction, corrections } = expectOk(await extractTransaction(messageOf("T009"), provider));
+    expect(transaction.relationship_type).toEqual({ value: null, provenance: "unknown" });
+    expect(corrections).toEqual([expect.objectContaining({ path: "relationship_type", reason: "unknown_placeholder_cleared" })]);
+  });
+
+  it("the same placeholder in a clarification reply is cleared too", async () => {
+    const provider = providerReturning(JSON.stringify({ relationship_type: { value: "unknown", provenance: "unknown" } }));
+    const outcome = await extractClarificationAnswer("سؤال", "لست متأكدًا", ["relationship_type"], provider);
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok) expect(outcome.fields.relationship_type).toEqual({ value: null, provenance: "unknown" });
+  });
+
+  it("only the placeholder is normalized: a real value with provenance unknown still fails closed", async () => {
+    const realValue = editedCase("T009", (t) => {
+      t.relationship_type = { value: "sale", provenance: "unknown" } as never;
+    });
+    expectTechnicalError(await extractTransaction(messageOf("T009"), realValue), "extraction_schema_violation");
+
+    const reply = providerReturning(JSON.stringify({ relationship_type: { value: "sale", provenance: "unknown" } }));
+    const outcome = await extractClarificationAnswer("سؤال", "شراء", ["relationship_type"], reply);
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) expect(outcome.result).toMatchObject({ state: "TECHNICAL_ERROR", error_code: "extraction_schema_violation" });
   });
 
   it("extra top-level keys such as a ruling or a response state → TECHNICAL_ERROR", async () => {
