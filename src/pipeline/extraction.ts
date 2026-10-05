@@ -65,6 +65,15 @@ Return only one JSON object matching the provided schema. For every field:
 - "inferred": you derived it but the user did not state it. Put the value and NO evidence_span. It will not be treated as a fact.
 - "unknown": not stated. Set value to null and NO evidence_span.
 Never invent facts. In particular, do not assume who owns the goods, what a fee is for, whether an amount is added to a debt, whether a price was fixed at the agreement, or whether a loan increase was a condition, unless the user said so.
+For an explicit text value, use the user's own words (copied or shortened from evidence_span), not synonyms or a paraphrase, and never compute new numbers (differences, percentages): a computed number is not a stated fact.
+
+Field meanings:
+- relationship_type: "sale" when the user says they buy or sell goods or a service (from a store or merchant, or through an app), including on installments; "loan" when the user describes lending or borrowing money. "sale" or "loan" is explicit when the user's words describe that act (a verb of buying, selling, lending or borrowing), even if the user also asks how to classify the transaction. Exception: when a bank, finance company or other financier sells the goods to the user (whether or not the user says it bought them first), use "murabaha" with provenance "inferred" (an analytical label) unless the user writes مرابحة, not "sale". When a party is described only as paying the price on the user's behalf, without the user saying they buy from it or that it sells the goods, use "unknown".
+- return_or_profit: an increase, profit or extra amount that the user says exists, as the user states it (e.g. the amounts the user gave, in their words). When the user says there is no increase, leave it unknown.
+- price_fixed_at_contract: true when the user says the price is known, fixed, specified or agreed at the agreement or from the start; false when the user says it can change.
+- increase_conditioned_at_contract: only for an increase on a loan: whether the user says it was a condition or part of the agreement from the start.
+- late_penalty.exists: whether an extra amount of money is charged because of late payment. Other consequences of lateness are not a monetary amount: when the user says there is no extra amount, set exists=false with those words as evidence_span.
+- late_penalty.details: what the user says happens when payment is late, or the nature of the late amount (e.g. how it is calculated or whether it is added to the debt), in the user's words. When the user only says that an amount exists, leave details unknown; do not repeat that statement here.
 Set in_scope=false and category "out_of_scope" for a financial question outside these categories (e.g. securities or crypto trading); do not force it into a category.
 Do not set evidence_origin. missing_information and needs_clarification are recomputed by the system; return [] and false.`;
 

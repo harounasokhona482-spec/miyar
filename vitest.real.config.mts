@@ -8,5 +8,7 @@ export default defineConfig({
     testTimeout: 300_000,
     hookTimeout: 60_000,
     fileParallelism: false,
+    // Show the latency report (states and timings only) even when every test passes.
+    silent: false,
   },
 });

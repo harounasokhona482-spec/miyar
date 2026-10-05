@@ -15,8 +15,14 @@ const REPEAT = Number(process.env.MIYAR_SMOKE_REPEAT ?? 2);
 const hasKey = Boolean(process.env.MIYAR_LLM_API_KEY?.trim());
 const secret = process.env.MIYAR_STATE_SECRET ?? "smoke-test-state-secret-0123456789abcdef";
 
-const timings: LogEntry["timings"][] = [];
-const deps = { provider: () => providerFromEnv(process.env), stateSecret: secret, log: (e: LogEntry) => timings.push(e.timings) };
+type RequestRecord = { label: string; state: string; error_code?: string; turn: LogEntry["turn"] } & LogEntry["timings"];
+const requests: RequestRecord[] = [];
+let currentLabel = "";
+const deps = {
+  provider: () => providerFromEnv(process.env),
+  stateSecret: secret,
+  log: (e: LogEntry) => requests.push({ label: currentLabel, state: e.state, error_code: e.error_code, turn: e.turn, ...e.timings }),
+};
 
 async function run(message: string, state_token?: string): Promise<ApiResponse> {
   return (await handleMiyarRequest({ message, ...(state_token ? { state_token } : {}) }, deps)).response;
@@ -49,6 +55,7 @@ describe.skipIf(!hasKey)("real OpenAI smoke tests", () => {
     it(`${c.id} (×${REPEAT}) reaches an accepted state`, async () => {
       const accepted = caseOf(c.id).turns[0]!.accepted_states;
       for (let i = 0; i < REPEAT; i++) {
+        currentLabel = `${c.id}#${i + 1}`;
         const final = (await conversation(c.id, c.replies)).at(-1)!;
         expect(accepted, `${c.id} run ${i + 1}: got ${final.state}`).toContain(final.state);
         c.check?.(final);
@@ -57,19 +64,29 @@ describe.skipIf(!hasKey)("real OpenAI smoke tests", () => {
   }
 
   it("T009 → ownership reply → structural GROUNDED", async () => {
+    currentLabel = "T009→T021";
     const turns = await conversation("T009", [caseOf("T021").turns[1]!.user_message]);
     expect(turns.map((t) => t.state)).toEqual(["NEEDS_CLARIFICATION", "GROUNDED"]);
   });
 
-  it("reports average latency (no text logged)", () => {
+  it("reports per-request and average latency (no text logged)", () => {
     const avg = (k: keyof LogEntry["timings"]) => {
-      const xs = timings.map((t) => t[k]).filter((x): x is number => typeof x === "number");
+      const xs = requests.map((t) => t[k]).filter((x): x is number => typeof x === "number");
       return xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null;
     };
+    for (const r of requests) console.info(JSON.stringify(r));
+    const slowest = requests.reduce<RequestRecord | null>((a, b) => (!a || b.total_ms > a.total_ms ? b : a), null);
     console.info(
-      JSON.stringify({ runs: timings.length, avg_extraction_ms: avg("extraction_ms"), avg_retrieval_evidence_ms: avg("retrieval_evidence_ms"), avg_generation_ms: avg("generation_ms"), avg_total_ms: avg("total_ms") }),
+      JSON.stringify({
+        requests: requests.length,
+        avg_extraction_ms: avg("extraction_ms"),
+        avg_retrieval_evidence_ms: avg("retrieval_evidence_ms"),
+        avg_generation_ms: avg("generation_ms"),
+        avg_total_ms: avg("total_ms"),
+        slowest: slowest && { label: slowest.label, turn: slowest.turn, total_ms: slowest.total_ms },
+      }),
     );
-    expect(timings.length).toBeGreaterThan(0);
+    expect(requests.length).toBeGreaterThan(0);
   });
 });
 
