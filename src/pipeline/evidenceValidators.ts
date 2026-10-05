@@ -75,7 +75,12 @@ type Explicit = { value: unknown; evidence_span: string };
  * to be in the user's words. Returns a downgrade when the span does not prove
  * the value.
  */
-export function validateMaterialEvidence(path: string, field: Explicit): Downgrade | null {
+export function validateMaterialEvidence(
+  path: string,
+  field: Explicit,
+  /** The clarification question the span answers, if any: it already fixes the topic. */
+  context: { answersQuestionAbout?: string } = {},
+): Downgrade | null {
   const span = field.evidence_span;
   const value = typeof field.value === "string" ? field.value : "";
   const unknown: Downgrade = { reason: "insufficient_lexical_evidence", to: "unknown" };
@@ -85,8 +90,11 @@ export function validateMaterialEvidence(path: string, field: Explicit): Downgra
       return spanHasStem(span, OWNERSHIP_STEMS) ? null : unknown;
     case "financing_party":
       return spanCoversValue(value, span) ? null : unknown;
-    case "fees.type":
-      return spanHasStem(span, FEE_STEMS) && spanCoversValue(value, span) ? null : unknown;
+    case "fees.type": {
+      // A reply to the fee question need not repeat «رسوم»; its words must still prove the value.
+      const aboutFees = context.answersQuestionAbout === "fees.type" || spanHasStem(span, FEE_STEMS);
+      return aboutFees && spanCoversValue(value, span) ? null : unknown;
+    }
     case "late_penalty.details":
       return spanCoversValue(value, span) ? null : unknown;
     case "price_fixed_at_contract":

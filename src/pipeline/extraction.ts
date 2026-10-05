@@ -64,6 +64,7 @@ Return only one JSON object matching the provided schema. For every field:
 - "inferred": you derived it but the user did not state it. Put the value and NO evidence_span. It will not be treated as a fact.
 - "unknown": not stated. Set value to null and NO evidence_span.
 Never invent facts. In particular, do not assume who owns the goods, what a fee is for, whether an amount is added to a debt, whether a price was fixed at the agreement, or whether a loan increase was a condition, unless the user said so.
+Set in_scope=false and category "out_of_scope" for a financial question outside these categories (e.g. securities or crypto trading); do not force it into a category.
 Do not set evidence_origin. missing_information and needs_clarification are recomputed by the system; return [] and false.`;
 
 function wrapUserMessage(message: string): string {
@@ -152,7 +153,7 @@ const RULING_IN_VALUE = RULING_TERMS.map((t) => arabicPhrase(t, "prefix"));
 type Finding = { reason: ExtractionCorrection["reason"]; to: "unknown" | "inferred" };
 
 /** Validates one field against the text the user actually wrote. */
-function check(path: string, field: Field, userText: string): Finding | null {
+function check(path: string, field: Field, userText: string, context: { answersQuestionAbout?: string } = {}): Finding | null {
   if (typeof field.value === "string" && matchesAny(normalizeArabic(field.value), RULING_IN_VALUE)) {
     return { reason: "ruling_language_in_value", to: "unknown" };
   }
@@ -163,7 +164,7 @@ function check(path: string, field: Field, userText: string): Finding | null {
     const spanNumbers = new Set(numbersIn(span));
     if (numbersIn(field.value).some((n) => !spanNumbers.has(n))) return { reason: "value_not_supported_by_span", to: "unknown" };
   }
-  return validateMaterialEvidence(path, { value: field.value, evidence_span: span });
+  return validateMaterialEvidence(path, { value: field.value, evidence_span: span }, context);
 }
 
 function downgraded(field: Field, to: Finding["to"]): Field {
@@ -326,7 +327,8 @@ export async function extractClarificationAnswer(
     const parsed = TARGETABLE_FIELDS[path].safeParse(value);
     if (!parsed.success) return failed("extraction_schema_violation");
     const field: Field = structuredClone(parsed.data);
-    const finding = check(path, field, reply); // spans are checked against the reply only
+    // Spans are checked against the reply only; the question fixes the topic of its own targets.
+    const finding = check(path, field, reply, { answersQuestionAbout: path });
     if (finding) corrections.push({ path, reason: finding.reason, original: structuredClone(field) });
     fields[path] = stampOrigin(finding ? downgraded(field, finding.to) : field, "clarification_free_text");
   }

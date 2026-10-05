@@ -122,11 +122,91 @@ export const EXTRACTION_RESPONSES: Readonly<Record<string, Transaction>> = {
     relationship_type: I("murabaha"),
     parties: [{ role: "bank", description: E("البنك", "البنك سيمول") }],
     product_or_service: E("سيارة", "السيارة"),
-    payment_method: E("أقساط", "بالأقساط"),
+    payment_method: E("بيع بالأقساط", "ويبيعها لي بالأقساط"),
     financing_party: E("البنك", "البنك سيمول السيارة"),
     ownership_transfer: U,
     missing_information: ["هل يشتري البنك السيارة ويمتلكها قبل أن يبيعها"],
     needs_clarification: true,
+  }),
+
+  T002: base({
+    category: "sale_installments",
+    possible_classification: I("بيع بالتقسيط بسعر نهائي ثابت"),
+    relationship_type: E("sale", "اشتريت جهازًا"),
+    parties: [{ role: "seller", description: E("متجر", "من متجر") }],
+    product_or_service: E("جهاز", "جهازًا"),
+    payment_schedule: E("6 دفعات", "على 6 دفعات"),
+    price_fixed_at_contract: E(true, "والسعر النهائي ثابت منذ توقيع العقد"),
+  }),
+
+  T003: base({
+    category: "late_payment_terms",
+    possible_classification: I("شرط حلول الأقساط عند التأخر"),
+    payment_method: E("أقساط", "الأقساط المتبقية"),
+    late_penalty: {
+      exists: E(false, "ولا توجد زيادة مالية إضافية"),
+      details: E(
+        "تصبح كل الأقساط المتبقية مستحقة فورًا عند التأخر عن قسط",
+        "العقد يقول إنه إذا تأخرت عن قسط واحد تصبح كل الأقساط المتبقية مستحقة فورًا",
+      ),
+    },
+  }),
+
+  T013: base({
+    category: "out_of_scope",
+    in_scope: false,
+    possible_classification: I("تداول عقود الخيارات على الأسهم"),
+    product_or_service: E("تداول Options على الأسهم", "تداول Options على الأسهم"),
+  }),
+
+  T014: base({
+    category: "out_of_scope",
+    in_scope: false,
+    possible_classification: I("أرباح Staking في العملات الرقمية"),
+    product_or_service: E("Staking في العملات الرقمية", "Staking في العملات الرقمية"),
+    return_or_profit: E("أرباح Staking", "أرباح Staking"),
+  }),
+
+  T016: base({
+    category: "sale_installments",
+    possible_classification: I("خطة تقسيط مع تحويل الأقساط إلى وحدات"),
+    relationship_type: E("sale", "اشتريت ثلاجة"),
+    parties: [{ role: "seller", description: E("متجر المدار", "متجر المدار") }],
+    product_or_service: E("ثلاجة", "ثلاجة"),
+    payment_method: E("خطة سَرْو للتقسيط", "خطة سَرْو للتقسيط"),
+    payment_schedule: E("تحويل الأقساط المتبقية إلى وحدات سَرْو", "تحويل الأقساط المتبقية إلى وحدات سَرْو"),
+  }),
+
+  T017: base({
+    category: "sale_installments",
+    possible_classification: I("بيع بالتقسيط بعقد لُجَين"),
+    relationship_type: E("sale", "اشتريت جهازًا"),
+    parties: [{ role: "seller", description: E("شركة نسيم", "شركة نسيم") }],
+    product_or_service: E("جهاز", "جهازًا"),
+    payment_method: E("عقد لُجَين للتقسيط", "بعقد لُجَين للتقسيط"),
+  }),
+
+  T019: base({
+    category: "sale_installments",
+    possible_classification: I("بيع بالتقسيط بسعر إجمالي ثابت"),
+    relationship_type: E("sale", "اشتريت غسالة"),
+    parties: [{ role: "seller", description: E("متجر", "من متجر") }],
+    product_or_service: E("غسالة", "غسالة"),
+    payment_schedule: E("12 قسطًا شهريًا", "على 12 قسطًا شهريًا"),
+    price_fixed_at_contract: E(true, "والسعر الإجمالي محدد في العقد من البداية ولا يتغير"),
+  }),
+
+  T020: base({
+    category: "bnpl",
+    possible_classification: I("شراء بالتقسيط عبر تطبيق برسوم خدمة شهرية"),
+    relationship_type: E("sale", "للشراء بالتقسيط"),
+    parties: [{ role: "app", description: E("تطبيق", "تطبيقًا") }],
+    payment_method: E("تقسيط", "للشراء بالتقسيط"),
+    fees: {
+      exists: E(true, "رسوم خدمة كل شهر"),
+      type: E("رسوم خدمة", "رسوم خدمة"),
+      amount_or_rate: E("كل شهر", "كل شهر"),
+    },
   }),
 
   T015: base({

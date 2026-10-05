@@ -1,3 +1,4 @@
+import { GENERAL_STOPWORDS, KB_WORDING_STOPWORDS, LEMMAS, QUESTION_FRAME_TERMS } from "../config/retrievalLexicon";
 import { normalizeArabic } from "./arabic";
 
 /**
@@ -9,36 +10,11 @@ import { normalizeArabic } from "./arabic";
  * 4. strip up to two common suffixes (ـه، ـها، ـات، ـي، ـت...);
  * 5. strip a leading alef (أفعل / إفعال forms: «أقرضني» → «قرض»).
  * Each step keeps at least 3 letters, so short roots are left intact.
+ * The dictionaries live in src/config/retrievalLexicon.ts.
  */
 
-const STOPWORDS = new Set(
-  [
-    "في", "من", "الى", "الي", "علي", "عن", "الا", "ان", "انه", "انها", "او", "ثم", "هل", "ما", "ماذا", "كيف", "لم", "لن", "لا",
-    "قد", "كان", "يكون", "تكون", "هذا", "هذه", "ذلك", "تلك", "التي", "الذي", "الذين", "هو", "هي", "هم", "انا", "نحن", "انت",
-    "لي", "له", "لها", "لهم", "به", "بها", "فيه", "فيها", "عند", "مع", "كل", "بعد", "قبل", "اذا", "اي", "ايضا", "حتي", "بين",
-    "غير", "دون", "هناك", "يا", "ام", "عني", "منه", "منها", "عليه", "عليها", "او",
-    "ولا", "وهل", "فهل", "وتم", "تم", "وقد", "وهو", "وهي", "لكن", "ولكن", "منذ", "توجد", "يوجد",
-    "حسب", "بحسب", "نعم",
-    // Recurrent wording of the knowledge base itself, not content.
-    "ماده", "تقرر", "تنسب", "تذكر", "يذكر", "هامش", "تعلل", "تعرف",
-    // Question-frame words: asking "is it permissible / what is the ruling" is not topical evidence.
-    "حكم", "الحكم", "شرعا", "جائز", "جائزه", "يجوز", "تجوز", "حلال", "حرام",
-  ].map(normalizeArabic),
-);
-
-/**
- * Same-root forms that light stemming cannot unify (broken plurals, verbal
- * nouns), limited to the domain's own vocabulary. Applied after the leading
- * clitic is removed and after each suffix pass.
- */
-const LEMMAS = new Map(
-  [
-    ["اقساط", "قسط"],
-    ["تقسيط", "قسط"],
-    ["شروط", "شرط"],
-    ["عقود", "عقد"],
-  ].map(([form, lemma]) => [normalizeArabic(form!), lemma!] as const),
-);
+const STOPWORDS = new Set([...GENERAL_STOPWORDS, ...KB_WORDING_STOPWORDS, ...QUESTION_FRAME_TERMS].map(normalizeArabic));
+const LEMMA_MAP = new Map(LEMMAS.map(([form, lemma]) => [normalizeArabic(form), lemma] as const));
 
 const LEADING_CLITICS = /^(?:وال|فال|بال|كال|لل|ال|[وفبكل])/;
 const SUFFIXES = ["هما", "كما", "هم", "هن", "ها", "كم", "نا", "ني", "ات", "ون", "ين", "ان", "يه", "ته", "ه", "ي", "ت", "ا", "ك"];
@@ -50,13 +26,13 @@ function stem(token: string): string {
 
   const clitic = LEADING_CLITICS.exec(s)?.[0];
   if (clitic && s.length - clitic.length >= (clitic.length > 1 ? 2 : MIN_STEM)) s = s.slice(clitic.length);
-  if (LEMMAS.has(s)) return LEMMAS.get(s)!;
+  if (LEMMA_MAP.has(s)) return LEMMA_MAP.get(s)!;
 
   for (let pass = 0; pass < 2; pass++) {
     const suffix = SUFFIXES.find((x) => s.endsWith(x) && s.length - x.length >= MIN_STEM);
     if (!suffix) break;
     s = s.slice(0, -suffix.length);
-    if (LEMMAS.has(s)) return LEMMAS.get(s)!;
+    if (LEMMA_MAP.has(s)) return LEMMA_MAP.get(s)!;
   }
 
   if (s.startsWith("ا") && s.length - 1 >= MIN_STEM) s = s.slice(1);

@@ -59,7 +59,7 @@ function expectTechnicalError(outcome: ExtractionOutcome, code: string) {
 }
 
 describe("benchmark cases through the fake provider", () => {
-  const ids = ["T001", "T004", "T005", "T006", "T007", "T008", "T009", "T015"];
+  const ids = ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T009", "T013", "T014", "T015", "T016", "T017", "T019", "T020"];
 
   it.each(ids)("%s passes the pre-gate and extracts cleanly with no correction", async (id) => {
     expect(classifyPreGate(messageOf(id)).outcome).toBe("PASS");

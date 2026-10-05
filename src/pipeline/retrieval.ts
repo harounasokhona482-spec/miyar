@@ -1,3 +1,4 @@
+import { CATEGORY_TERMS, RELATIONSHIP_TERMS } from "../config/retrievalLexicon";
 import type { KnowledgeRecordV2 } from "../domain/schemas/knowledgeRecord";
 import type { PipelineResult } from "../domain/schemas/pipelineResult";
 import type { Transaction } from "../domain/schemas/transaction";
@@ -31,10 +32,13 @@ export type RetrievalConfig = {
   queryWeights: { userText: number; explicitSpan: number; canonical: number };
   /** Multiplier for a record whose category equals the transaction's category (applied only to scores > 0). */
   categoryBoost: number;
+  /** How many positive-score candidates the evidence gate evaluates (display stays at topK). */
+  evidenceCandidateK: number;
 };
 
 export const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
   topK: 3,
+  evidenceCandidateK: 5,
   k1: 1.2,
   b: 0.75,
   fieldWeights: { topic: 2, retrieval_keywords: 3, normalized_content: 1, source_summary: 1 },
@@ -124,21 +128,8 @@ export function buildRetrievalIndex(
 // Query
 // ---------------------------------------------------------------------------
 
-/** Canonical vocabulary per analytical label, used only as a low-weight boost. */
-const CATEGORY_TERMS: Record<string, string[]> = {
-  sale_installments: ["بيع بالتقسيط", "ثمن مؤجل"],
-  murabaha_purchase_orderer: ["مرابحة", "الآمر بالشراء"],
-  loan_with_conditioned_increase: ["قرض", "زيادة مشروطة"],
-  interest_bearing_loan: ["قرض بفائدة"],
-  late_payment_terms: ["تأخر", "الأقساط"],
-  bnpl: ["تقسيط", "دفعات"],
-};
-const RELATIONSHIP_TERMS: Record<string, string[]> = {
-  sale: ["بيع"],
-  loan: ["قرض"],
-  murabaha: ["مرابحة"],
-};
-
+// Canonical vocabulary per analytical label (CATEGORY_TERMS, RELATIONSHIP_TERMS) lives in
+// src/config/retrievalLexicon.ts; it is used only as a low-weight query boost.
 export type QueryTerm = { term: string; weight: number; from: "user_text" | "explicit_span" | "canonical" };
 
 export type RetrievalInput = {
@@ -240,6 +231,16 @@ export function retrieve(index: RetrievalIndex, input: RetrievalInput, overrides
     candidates,
     clarification_pending: input.transaction?.needs_clarification ?? false,
   };
+}
+
+/**
+ * The wider candidate pool the evidence gate evaluates: the best
+ * evidenceCandidateK positive-score records (all of them if fewer exist).
+ * Users are still shown at most topK.
+ */
+export function retrieveEvidencePool(index: RetrievalIndex, input: RetrievalInput, overrides: Partial<RetrievalConfig> = {}): RetrievalResult {
+  const config: RetrievalConfig = { ...DEFAULT_RETRIEVAL_CONFIG, ...overrides };
+  return retrieve(index, input, { ...overrides, topK: config.evidenceCandidateK });
 }
 
 const productionIndexes = new WeakMap<KnowledgeBase, RetrievalIndex>();
