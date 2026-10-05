@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ResponseStateSchema } from "../responseStates";
 
-/** Categories that approved records may belong to (knowledge_base_v1.json). */
+/** Categories that approved records may belong to (knowledge_base_v2.json). */
 export const KB_CATEGORIES = [
   "sale_installments",
   "late_payment_terms",

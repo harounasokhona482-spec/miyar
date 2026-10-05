@@ -46,7 +46,7 @@ export function isEstablishedFact(field: { provenance: Provenance; value: unknow
 
 /**
  * Transaction categories the extractor may assign. The first five mirror the
- * categories of knowledge_base_v1.json; "bnpl" is in MVP scope (PRODUCT_SPEC §3)
+ * categories of knowledge_base_v2.json; "bnpl" is in MVP scope (PRODUCT_SPEC §3)
  * but has no approved record yet, so it can be detected but not answered.
  */
 export const TRANSACTION_CATEGORIES = [
