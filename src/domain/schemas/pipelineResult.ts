@@ -98,6 +98,7 @@ const ReferralSchema = z.object({
 export const INSUFFICIENT_REASONS = [
   "no_supporting_source",
   "out_of_scope",
+  "unsupported_language",
   "unknown_material_fact",
   "clarification_limit_reached",
   "citation_verification_failed",

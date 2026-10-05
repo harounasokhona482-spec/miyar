@@ -3,6 +3,7 @@ import {
   PRODUCT_DISCLAIMER,
   REFERRAL_MESSAGE,
   TECHNICAL_ERROR_MESSAGE,
+  UNSUPPORTED_LANGUAGE_MESSAGE,
 } from "../domain/messages";
 import { PipelineResultSchema, type PipelineResult, type REFERRAL_REASONS } from "../domain/schemas/pipelineResult";
 
@@ -29,6 +30,15 @@ export function referralResult(reason: ReferralReason): PipelineResult {
     disclaimer: PRODUCT_DISCLAIMER,
     referral_reason: reason,
     related_source_ids: [],
+  });
+}
+
+export function unsupportedLanguageResult(): PipelineResult {
+  return PipelineResultSchema.parse({
+    state: "INSUFFICIENT_EVIDENCE",
+    message: UNSUPPORTED_LANGUAGE_MESSAGE,
+    disclaimer: PRODUCT_DISCLAIMER,
+    insufficient_reason: "unsupported_language",
   });
 }
 

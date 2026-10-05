@@ -21,6 +21,8 @@ export const TECHNICAL_ERROR_MESSAGE =
 export const OUT_OF_SCOPE_MESSAGE =
   "هذا السؤال خارج نطاق النسخة الحالية من مِعيار التي تركز على معاملات مالية محددة.";
 
+export const UNSUPPORTED_LANGUAGE_MESSAGE = "النسخة الحالية من مِعيار تدعم الأسئلة باللغة العربية فقط.";
+
 /** The "I don't know" option that every clarification question must offer. */
 export const DONT_KNOW_OPTION = "لا أعرف";
 

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import testSetV2 from "../../test_set_v2.json";
-import { OUT_OF_SCOPE_MESSAGE, PRODUCT_DISCLAIMER, REFERRAL_MESSAGE, TECHNICAL_ERROR_MESSAGE } from "../domain/messages";
+import {
+  OUT_OF_SCOPE_MESSAGE,
+  PRODUCT_DISCLAIMER,
+  REFERRAL_MESSAGE,
+  TECHNICAL_ERROR_MESSAGE,
+  UNSUPPORTED_LANGUAGE_MESSAGE,
+} from "../domain/messages";
 import { TestSetFileSchema } from "../domain/schemas/evalCase";
 import { PipelineResultSchema } from "../domain/schemas/pipelineResult";
 import { normalizeArabic } from "../text/arabic";
@@ -79,7 +85,74 @@ describe("general questions in personal form are not referred", () => {
   });
 });
 
+describe("owner decisions: personal form vs a ruling on the user's own contract", () => {
+  it.each([
+    "هل يجوز لي أن أشتري هاتفًا بالتقسيط؟",
+    "عقدي فيه شرط حلول الأقساط، هل هذا الشرط جائز عمومًا؟",
+    "لدي عقد يذكر رسومًا، كيف تُفهم هذه الرسوم عمومًا؟",
+    "هل يجوز لي شراء سلعة بالتقسيط من حيث الأصل؟",
+  ])("PASS: %s", (message) => {
+    expect(classifyPreGate(message).outcome).toBe("PASS");
+  });
+
+  it.each([
+    "هل الشرط الموجود في عقدي صحيح شرعًا؟",
+    "هل عقدي جائز؟",
+    "هل أستمر في عقدي أم أفسخه؟",
+    "هل أنا آثم بسبب هذا العقد؟",
+    "هل يجوز لي الاستمرار في عقدي؟",
+    "هل هذا العقد الذي وقعته صحيح؟",
+    "ماذا يجب علي أن أفعل في حالتي؟",
+    "هل عقدي الذي فيه شرط حلول الأقساط جائز؟",
+  ])("REFERRAL: %s", (message) => {
+    expect(classifyPreGate(message).outcome).toBe("REFERRAL");
+  });
+
+  it("does not let «عمومًا» bypass a ruling on the user's own contract", () => {
+    expect(classifyPreGate("هل عقدي جائز عمومًا؟").outcome).toBe("REFERRAL");
+    expect(classifyPreGate("بشكل عام، هل معاملتي مع البنك حلال؟").outcome).toBe("REFERRAL");
+  });
+});
+
+describe("UNSUPPORTED_LANGUAGE", () => {
+  it.each(["Is my contract halal?", "Can I buy a phone in installments?", "Is my contract halal? عقد", "آیا خرید قسطی گوشی جایز است؟ چگونه"])(
+    "%s → UNSUPPORTED_LANGUAGE",
+    (message) => {
+      expect(classifyPreGate(message).outcome).toBe("UNSUPPORTED_LANGUAGE");
+    },
+  );
+
+  it.each(["اشتريت iPhone عن طريق BNPL على 4 دفعات.", "هل أرباح Staking في العملات الرقمية حلال؟", "اشتريت iPhone 15 Pro Max عبر BNPL", "لا أعرف", "نعم"])(
+    "Arabic with foreign names or digits stays supported: %s",
+    (message) => {
+      expect(classifyPreGate(message).outcome).not.toBe("UNSUPPORTED_LANGUAGE");
+    },
+  );
+
+  it("returns INSUFFICIENT_EVIDENCE with the fixed Arabic-only text, not a new state", () => {
+    const run = runSafetyPreGate("Is murabaha allowed?");
+    expect(run.proceed).toBe(false);
+    if (run.proceed) return;
+    expect(run.result).toMatchObject({
+      state: "INSUFFICIENT_EVIDENCE",
+      message: UNSUPPORTED_LANGUAGE_MESSAGE,
+      insufficient_reason: "unsupported_language",
+    });
+  });
+});
+
 describe("OUT_OF_SCOPE rules", () => {
+  it.each(["ما زكاة المال المدخر؟", "كيف أحسب زكاة أرباح البيع بالتقسيط؟", "كيف يقسم الميراث بين الورثة؟", "ما حكم الإرث من مال فيه قرض؟"])(
+    "zakat and inheritance are out of scope even with financial terms: %s",
+    (message) => {
+      expect(classifyPreGate(message).outcome).toBe("OUT_OF_SCOPE");
+    },
+  );
+
+  it("does not confuse «تركه» (he left it) with an estate", () => {
+    expect(classifyPreGate("اشترى السيارة بالتقسيط ثم تركه البائع دون ضمان").outcome).toBe("PASS");
+  });
+
   it.each(["ما حكم صلاة الوتر؟", "كيف أتوضأ؟", "ما حكم صيام الست من شوال؟", "ما شروط صحة الحج؟"])("%s → OUT_OF_SCOPE", (message) => {
     expect(classifyPreGate(message).outcome).toBe("OUT_OF_SCOPE");
   });

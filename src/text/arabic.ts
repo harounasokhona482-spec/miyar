@@ -32,9 +32,19 @@ function escapeRegExp(s: string): string {
  * word boundary; in "prefix" mode it may be followed by suffixes (e.g. ـه، ـا).
  */
 export function arabicPhrase(phrase: string, mode: "word" | "prefix" = "word"): RegExp {
+  return new RegExp(arabicPhraseSource(phrase, mode), "u");
+}
+
+/** Regex source for arabicPhrase, for composing larger patterns. */
+export function arabicPhraseSource(phrase: string, mode: "word" | "prefix" = "word"): string {
   const body = normalizeArabic(phrase).split(" ").map(escapeRegExp).join("\\s+");
   const tail = mode === "word" ? "(?!\\p{L})" : "";
-  return new RegExp(`(?<!\\p{L})(?:[وف])?(?:[بلك])?(?:ال)?${body}${tail}`, "u");
+  return `(?<!\\p{L})(?:[وف])?(?:[بلك])?(?:ال)?${body}${tail}`;
+}
+
+/** Alternation of several phrases as one regex source group. */
+export function anyPhraseSource(phrases: readonly string[], mode: "word" | "prefix" = "word"): string {
+  return `(?:${phrases.map((p) => arabicPhraseSource(p, mode)).join("|")})`;
 }
 
 export function matchesAny(normalizedText: string, patterns: readonly RegExp[]): boolean {
