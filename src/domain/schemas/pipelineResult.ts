@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DONT_KNOW_OPTION } from "../messages";
+import { GroundedAnswerSchema } from "./groundedAnswer";
 import { TransactionSchema } from "./transaction";
 
 export const MAX_CLARIFICATION_ROUNDS = 3;
@@ -31,6 +32,8 @@ const GroundedSchema = z
     state: z.literal("GROUNDED"),
     supporting_source_ids: sourceIds.min(1),
     citations: z.array(CitationSchema).min(1),
+    /** The full structured answer (claims with claim_ref, sources from the KB, limitations). */
+    answer: GroundedAnswerSchema.optional(),
   })
   .superRefine((r, ctx) => {
     const supporting = new Set(r.supporting_source_ids);

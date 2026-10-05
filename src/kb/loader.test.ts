@@ -175,11 +175,18 @@ describe("runtime source boundaries", () => {
   const walk = (dir: string) => {
     for (const name of readdirSync(dir)) {
       const path = join(dir, name);
-      if (statSync(path).isDirectory()) walk(path);
-      else if (/\.(ts|tsx)$/.test(name) && !/\.test\.ts$/.test(name) && name !== "testHelpers.ts") runtimeFiles.push(path);
+      // testdata/ holds test-only modules (fixtures harness, canned model outputs).
+      if (statSync(path).isDirectory()) {
+        if (name !== "testdata") walk(path);
+      } else if (/\.(ts|tsx)$/.test(name) && !/\.test\.ts$/.test(name) && name !== "testHelpers.ts") runtimeFiles.push(path);
     }
   };
   walk(join(ROOT, "src"));
+
+  it("never imports test-only modules (testdata/, testHelpers) from application code", () => {
+    const offenders = runtimeFiles.filter((f) => /from\s+["'][^"']*(?:\/testdata\/|testHelpers)/.test(readFileSync(f, "utf8")));
+    expect(offenders).toEqual([]);
+  });
 
   it("never imports eval/fixtures from application code", () => {
     const offenders = runtimeFiles.filter((f) => /from\s+["'][^"']*\beval[\\/]|["'`][^"'`\n]*\beval[\\/]+fixtures/.test(readFileSync(f, "utf8")));

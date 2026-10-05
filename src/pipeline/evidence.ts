@@ -9,17 +9,20 @@ import { DEFAULT_RETRIEVAL_CONFIG, type RetrievalCandidate } from "./retrieval";
  * Evidence sufficiency gate: deterministic, no LLM.
  *
  * Retrieval relevance is NOT evidence. A candidate supports an answer only if
- * the record is approved and citation-eligible, has reviewed predicates, all
- * its required facts are established (explicit facts only), and none of its
- * exclusions holds. Each issue the transaction raises must be settled by such
- * a record; the minimal set takes one record per issue.
+ * the record is approved and citation-eligible, has reviewed predicates, none
+ * of its exclusions holds, and its required facts are established (explicit
+ * facts only). Two support modes:
+ * - direct: every required fact is established for this transaction;
+ * - conditional: only "conditional" requirements are unknown; the record may
+ *   give general information if the answer states those conditions as
+ *   unverified, and never applies the ruling to the user's case.
  *
- * The result is internal ("sufficient" | "needs_clarification" |
- * "insufficient" | "disputed") and maps later onto the approved states.
+ * The result is internal and maps later onto the approved response states.
  */
 
 export type EvidenceStatus = "sufficient" | "needs_clarification" | "insufficient" | "disputed";
 export type GroundingScope = "general" | "structural_general_information";
+export type SupportMode = "direct" | "conditional";
 
 /** What the evidence gate needs to know about each knowledge record. */
 export type EvidenceRecordInfo = {
@@ -42,29 +45,42 @@ export type EvidenceInput = {
   clarification?: { maxRoundsReached?: boolean; unknownByUser?: readonly string[] };
 };
 
+type Unknown = { check: string; clarifiableBy?: string };
+
 export type CandidateAssessment = {
   source_id: string;
   rank: number;
-  outcome: "applicable" | "excluded" | "undetermined";
+  outcome: "applicable" | "conditional" | "excluded" | "undetermined";
   reasons: string[];
-  /** Unknown required facts and the clarification fact that could settle each. */
-  unknowns: { check: string; clarifiableBy?: string }[];
+  coreUnknowns: Unknown[];
+  conditionalUnknowns: Unknown[];
 };
 
 export type IssueAssessment = {
   id: string;
+  need: "required" | "optional";
   status: "covered" | "pending" | "uncovered";
+  mode: SupportMode | null;
   supporting: string | null;
   pendingFacts: string[];
 };
 
+export type UnverifiedCondition = { source_id: string; condition: string; clarifiableBy?: string };
+
 export type EvidenceResult = {
   status: EvidenceStatus;
-  /** Minimal set: one record per raised issue (both positions when disputed). */
+  /** One record per required issue (both positions when disputed). */
   supportingIds: string[];
-  /** Applicable records not needed for the minimal set (e.g. a definition the generator may cite). */
+  /** Applicable records the answer may use but does not depend on (e.g. a definition). */
   optionalSupportingIds: string[];
   excludedCandidates: { source_id: string; reasons: string[] }[];
+  supportMode: SupportMode | null;
+  unverifiedConditions: UnverifiedCondition[];
+  /** True when an answer can be given now; clarification is then not forced. */
+  answerableWithoutClarification: boolean;
+  /** Facts to ask the user — only when the answer cannot be given without them. */
+  askFacts: string[];
+  /** Every fact known to be missing, including those an answer can carry as conditions. */
   missingFacts: string[];
   groundingScope: GroundingScope | null;
   reasons: string[];
@@ -80,31 +96,35 @@ function assess(
   predicates: RecordPredicates | undefined,
   facts: TransactionFacts,
 ): CandidateAssessment {
-  const base = { source_id: candidate.source_id, rank: candidate.rank, unknowns: [] as CandidateAssessment["unknowns"] };
+  const empty = { coreUnknowns: [], conditionalUnknowns: [] };
   const gate: string[] = [];
   if (!info) gate.push("record_not_found");
   else {
     if (!info.approved) gate.push("not_approved");
     if (!info.citation_eligible) gate.push("not_citation_eligible");
   }
-  if (!predicates) gate.push("no_reviewed_predicates");
-  if (!predicates) return { ...base, outcome: "excluded", reasons: gate };
+  if (!predicates) {
+    gate.push("no_reviewed_predicates");
+    return { source_id: candidate.source_id, rank: candidate.rank, outcome: "excluded", reasons: gate, ...empty };
+  }
 
   // Predicates are evaluated even when the gate fails, so every reason is reported.
   const reasons: string[] = [...gate];
-  for (const ex of predicates.exclusions) {
-    if (ex.evaluate(facts) === "holds") reasons.push(`exclusion: ${ex.basis}`);
-  }
-  const unknowns: CandidateAssessment["unknowns"] = [];
+  for (const ex of predicates.exclusions) if (ex.evaluate(facts) === "holds") reasons.push(`exclusion: ${ex.basis}`);
+  const coreUnknowns: Unknown[] = [];
+  const conditionalUnknowns: Unknown[] = [];
   for (const req of predicates.required) {
     const v: Tri = req.evaluate(facts);
     if (v === "fails") reasons.push(`required_fails: ${req.basis}`);
-    if (v === "unknown") unknowns.push({ check: req.basis, ...(req.clarifiableBy ? { clarifiableBy: req.clarifiableBy } : {}) });
+    if (v === "unknown") {
+      const u = { check: req.basis, ...(req.clarifiableBy ? { clarifiableBy: req.clarifiableBy } : {}) };
+      (req.mode === "conditional" ? conditionalUnknowns : coreUnknowns).push(u);
+    }
   }
+  const base = { source_id: candidate.source_id, rank: candidate.rank, coreUnknowns, conditionalUnknowns };
   if (reasons.length > 0) return { ...base, outcome: "excluded", reasons };
-  if (unknowns.length > 0) {
-    return { ...base, outcome: "undetermined", reasons: unknowns.map((u) => `required_unknown: ${u.check}`), unknowns };
-  }
+  if (coreUnknowns.length > 0) return { ...base, outcome: "undetermined", reasons: coreUnknowns.map((u) => `required_unknown: ${u.check}`) };
+  if (conditionalUnknowns.length > 0) return { ...base, outcome: "conditional", reasons: [] };
   return { ...base, outcome: "applicable", reasons: [] };
 }
 
@@ -112,6 +132,8 @@ function factOrder(id: string): number {
   const i = (FACT_IDS as readonly string[]).indexOf(id);
   return i === -1 ? FACT_IDS.length : i;
 }
+
+const conditionText = (basis: string) => basis.replace(/^[A-Z]+-[A-Z0-9-]+ applicability: /, "");
 
 export function evaluateEvidence(
   input: EvidenceInput,
@@ -121,8 +143,7 @@ export function evaluateEvidence(
   const facts = new TransactionFacts(input.transaction);
   const unknownByUser = new Set(input.clarification?.unknownByUser ?? []);
   const canAsk = (fact: string) => !input.clarification?.maxRoundsReached && !unknownByUser.has(fact);
-  const officialMissing = input.missingFacts.map((m) => m.id as string);
-  const askableMissing = officialMissing.filter(canAsk);
+  const askableMissing = input.missingFacts.map((m) => m.id as string).filter(canAsk);
 
   // 1. Assess the evidence pool: best K positive-score candidates.
   const pool = input.candidates.filter((c) => c.score > 0).slice(0, config.evidenceCandidateK);
@@ -130,57 +151,101 @@ export function evaluateEvidence(
   const assessments = pool.map((c) => assess(c, input.records.get(c.source_id), predicatesById.get(c.source_id), facts));
   const byId = new Map(assessments.map((a) => [a.source_id, a]));
 
-  // 2. Issues raised by the transaction (subsumed ones folded into their parent).
-  const raisedAll = table.issues.filter((i) => i.raisedWhen(facts));
-  const raisedIds = new Set(raisedAll.map((i) => i.id));
-  const raised = raisedAll.filter((i) => !(i.subsumedBy ?? []).some((p) => raisedIds.has(p)));
-  const subsumed = raisedAll.filter((i) => !raised.includes(i));
+  // 2. Issues the user's stated facts raise, and whether the answer needs a claim on each.
+  const raised = table.issues.filter((i) => i.raisedWhen(facts));
+  const raisedIds = new Set(raised.map((i) => i.id));
 
   const issueResults: IssueAssessment[] = raised.map((issue: IssueDefinition) => {
+    const need = issue.need?.(raisedIds) ?? "required";
     const covering = issue.covering.map((id) => byId.get(id)).filter((a): a is CandidateAssessment => Boolean(a));
-    const applicable = covering.filter((a) => a.outcome === "applicable");
-    const blocking = covering.flatMap((a) => (a.outcome === "undetermined" ? a.unknowns.filter((u) => u.clarifiableBy) : []));
-    const pendingFacts = new Set<string>();
-    for (const u of blocking) if (canAsk(u.clarifiableBy!)) pendingFacts.add(u.clarifiableBy!);
-    for (const f of issue.pendingWhenMissing) if (askableMissing.includes(f)) pendingFacts.add(f);
+    const direct = covering.filter((a) => a.outcome === "applicable");
+    const conditional = covering.filter((a) => a.outcome === "conditional");
+    const blocking = covering.flatMap((a) => (a.outcome === "undetermined" ? a.coreUnknowns.filter((u) => u.clarifiableBy) : []));
 
-    // An explicit negative fact excluded every covering record: try another reading before abstaining.
+    const coreDriven = new Set(blocking.map((u) => u.clarifiableBy!).filter(canAsk));
+    const midDriven = new Set(issue.pendingWhenMissing.filter((f) => askableMissing.includes(f)));
     const allExcluded = covering.length > 0 && covering.every((a) => a.outcome === "excluded");
-    if (allExcluded && issue.rerouteTo && facts.relationship() === null && canAsk(issue.rerouteTo)) pendingFacts.add(issue.rerouteTo);
-
+    if (allExcluded && issue.rerouteTo && facts.relationship() === null && canAsk(issue.rerouteTo)) midDriven.add(issue.rerouteTo);
     // A clarifiable unknown the user can no longer answer leaves the issue unsettled.
     const blockedForGood = blocking.some((u) => !canAsk(u.clarifiableBy!));
 
-    let status: IssueAssessment["status"];
-    if (pendingFacts.size > 0) status = "pending";
-    else if (applicable.length > 0 && !blockedForGood) status = "covered";
-    else status = "uncovered";
-    return { id: issue.id, status, supporting: status === "covered" ? applicable[0]!.source_id : null, pendingFacts: [...pendingFacts] };
+    const result = (status: IssueAssessment["status"], mode: SupportMode | null, supporting: string | null, pending: Set<string>): IssueAssessment => ({
+      id: issue.id,
+      need,
+      status,
+      mode,
+      supporting,
+      pendingFacts: [...pending],
+    });
+    // A more specific record that may apply and can be clarified must be settled first.
+    if (coreDriven.size > 0) return result("pending", null, null, new Set([...coreDriven, ...midDriven]));
+    if (!blockedForGood && direct.length > 0) return result("covered", "direct", direct[0]!.source_id, new Set());
+    // Answerable without clarification: give conditional general information instead of asking.
+    if (!blockedForGood && conditional.length > 0) return result("covered", "conditional", conditional[0]!.source_id, new Set());
+    if (midDriven.size > 0) return result("pending", null, null, midDriven);
+    return result("uncovered", null, null, new Set());
   });
 
-  const excludedCandidates = (supporting: Set<string>, optional: Set<string>) =>
+  const required = issueResults.filter((i) => i.need === "required");
+  const covered = issueResults.filter((i) => i.status === "covered");
+  const supporting = [...new Set(required.filter((i) => i.status === "covered").map((i) => i.supporting!))];
+  const usable = new Set(assessments.filter((a) => a.outcome === "applicable" || a.outcome === "conditional").map((a) => a.source_id));
+  const optional = assessments
+    .filter((a) => usable.has(a.source_id) && !supporting.includes(a.source_id))
+    .filter((a) => covered.some((i) => i.id === predicatesById.get(a.source_id)!.issue))
+    .map((a) => a.source_id);
+
+  const unverifiedConditions: UnverifiedCondition[] = required
+    .filter((i) => i.status === "covered" && i.mode === "conditional")
+    .flatMap((i) =>
+      byId.get(i.supporting!)!.conditionalUnknowns.map((u) => ({
+        source_id: i.supporting!,
+        condition: conditionText(u.check),
+        ...(u.clarifiableBy ? { clarifiableBy: u.clarifiableBy } : {}),
+      })),
+    );
+
+  // Official missing facts tied to an issue the answer already covers do not force clarification.
+  const excused = new Set(
+    covered.flatMap((i) => [
+      ...(table.issues.find((d) => d.id === i.id)?.pendingWhenMissing ?? []),
+      ...(i.supporting ? byId.get(i.supporting)!.conditionalUnknowns.flatMap((u) => (u.clarifiableBy ? [u.clarifiableBy] : [])) : []),
+    ]),
+  );
+
+  const excludedCandidates = (used: Set<string>) =>
     assessments
-      .filter((a) => !supporting.has(a.source_id) && !optional.has(a.source_id))
+      .filter((a) => !used.has(a.source_id))
       .map((a) => {
         const issue = predicatesById.get(a.source_id)?.issue;
-        const notRaised = issue && !raisedAll.some((i) => i.id === issue) ? [`issue_not_raised: ${issue}`] : [];
-        const unused = a.outcome === "applicable" && a.reasons.length === 0 && notRaised.length === 0 ? ["applicable_but_not_used: decision not sufficient"] : [];
-        return { source_id: a.source_id, reasons: [...a.reasons, ...notRaised, ...unused] };
+        const notRaised = issue && !raisedIds.has(issue) ? [`issue_not_raised: ${issue}`] : [];
+        const reasons = [...a.reasons, ...notRaised];
+        if (reasons.length === 0) reasons.push(a.outcome === "conditional" ? "conditional_but_not_used" : "applicable_but_not_used: decision not sufficient");
+        return { source_id: a.source_id, reasons };
       });
 
   const result = (
     status: EvidenceStatus,
-    extra: Partial<Pick<EvidenceResult, "supportingIds" | "optionalSupportingIds" | "missingFacts" | "groundingScope" | "disputedPositions">>,
+    extra: Partial<Pick<EvidenceResult, "supportingIds" | "optionalSupportingIds" | "askFacts" | "groundingScope" | "disputedPositions" | "supportMode" | "unverifiedConditions">>,
     reasons: string[],
   ): EvidenceResult => {
     const supportingIds = extra.supportingIds ?? [];
     const optionalSupportingIds = extra.optionalSupportingIds ?? [];
+    const askFacts = [...new Set(extra.askFacts ?? [])].sort((a, b) => factOrder(a) - factOrder(b));
+    const conditions = extra.unverifiedConditions ?? [];
+    const missingFacts = [...new Set([...askFacts, ...conditions.flatMap((c) => (c.clarifiableBy ? [c.clarifiableBy] : []))])].sort(
+      (a, b) => factOrder(a) - factOrder(b),
+    );
     return {
       status,
       supportingIds,
       optionalSupportingIds,
-      excludedCandidates: excludedCandidates(new Set(supportingIds), new Set(optionalSupportingIds)),
-      missingFacts: [...new Set(extra.missingFacts ?? [])].sort((a, b) => factOrder(a) - factOrder(b)),
+      excludedCandidates: excludedCandidates(new Set([...supportingIds, ...optionalSupportingIds])),
+      supportMode: extra.supportMode ?? null,
+      unverifiedConditions: conditions,
+      answerableWithoutClarification: status === "sufficient" || status === "disputed",
+      askFacts,
+      missingFacts,
       groundingScope: extra.groundingScope ?? null,
       reasons,
       issues: issueResults,
@@ -189,26 +254,21 @@ export function evaluateEvidence(
   };
 
   // 3. Decide.
-  const uncovered = issueResults.filter((i) => i.status === "uncovered");
+  const uncovered = required.filter((i) => i.status === "uncovered");
   if (uncovered.length > 0) {
-    // Asking more cannot settle an issue no approved record covers.
+    // Asking more cannot settle an issue no approved record covers: clarification should stop.
     return result("insufficient", {}, uncovered.map((i) => `issue_uncovered: ${i.id}`));
   }
 
-  const pending = new Set(issueResults.flatMap((i) => i.pendingFacts));
-  if (raised.length === 0) for (const f of IDENTIFICATION_FACTS) if (askableMissing.includes(f)) pending.add(f);
-  if (table.enforceMissingInformation) for (const f of askableMissing) pending.add(f);
-  if (pending.size > 0) {
-    return result("needs_clarification", { missingFacts: [...pending] }, [...pending].map((f) => `fact_missing: ${f}`));
-  }
+  const ask = new Set(required.flatMap((i) => i.pendingFacts));
+  if (required.length === 0) for (const f of IDENTIFICATION_FACTS) if (askableMissing.includes(f)) ask.add(f);
+  if (table.enforceMissingInformation) for (const f of askableMissing) if (!excused.has(f)) ask.add(f);
+  if (ask.size > 0) return result("needs_clarification", { askFacts: [...ask] }, [...ask].map((f) => `fact_missing: ${f}`));
 
-  if (raised.length === 0) return result("insufficient", {}, ["no_issue_identified"]);
-
-  const supporting = issueResults.map((i) => i.supporting!).filter((id, i, a) => a.indexOf(id) === i);
-  const applicableIds = new Set(assessments.filter((a) => a.outcome === "applicable").map((a) => a.source_id));
+  if (required.length === 0) return result("insufficient", {}, ["no_issue_identified"]);
 
   // DISPUTED only from positions: same issue_id, different position_id, both sources applicable.
-  const positions = (input.positions ?? []).filter((p) => applicableIds.has(p.source_id));
+  const positions = (input.positions ?? []).filter((p) => byId.get(p.source_id)?.outcome === "applicable");
   for (const issueId of new Set(positions.map((p) => p.issue_id))) {
     const onIssue = positions.filter((p) => p.issue_id === issueId);
     if (new Set(onIssue.map((p) => p.position_id)).size >= 2) {
@@ -218,23 +278,25 @@ export function evaluateEvidence(
           supportingIds: [...new Set(onIssue.map((p) => p.source_id))],
           disputedPositions: onIssue.map((p) => ({ position_id: p.position_id, issue_id: p.issue_id, source_id: p.source_id })),
           groundingScope: "general",
+          supportMode: "direct",
         },
         [`positions_differ: ${issueId}`],
       );
     }
   }
 
-  const relatedIssues = new Set([...raised, ...subsumed].map((i) => i.id));
-  const optional = assessments
-    .filter((a) => a.outcome === "applicable" && !supporting.includes(a.source_id))
-    .filter((a) => relatedIssues.has(predicatesById.get(a.source_id)!.issue))
-    .map((a) => a.source_id);
   const structural = supporting.some((id) => predicatesById.get(id)!.groundingScope === "structural_general_information");
-
+  const conditionalMode = required.some((i) => i.mode === "conditional");
   return result(
     "sufficient",
-    { supportingIds: supporting, optionalSupportingIds: optional, groundingScope: structural ? "structural_general_information" : "general" },
-    issueResults.map((i) => `issue_covered: ${i.id} by ${i.supporting}`),
+    {
+      supportingIds: supporting,
+      optionalSupportingIds: optional,
+      groundingScope: structural ? "structural_general_information" : "general",
+      supportMode: conditionalMode ? "conditional" : "direct",
+      unverifiedConditions,
+    },
+    covered.map((i) => `issue_covered: ${i.id} by ${i.supporting} (${i.mode}, ${i.need})`),
   );
 }
 

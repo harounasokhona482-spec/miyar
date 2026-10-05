@@ -19,6 +19,12 @@ export type Check = {
   basis: string;
   evaluate: (f: TransactionFacts) => Tri;
   clarifiableBy?: FactId | string;
+  /**
+   * core (default): needed to use the record at all; unknown → ask or abstain.
+   * conditional: the record can still give general information when this is unknown,
+   * provided the answer states it as an unverified condition (never applied to the user's case).
+   */
+  mode?: "core" | "conditional";
 };
 
 export type RecordPredicates = {
@@ -40,8 +46,12 @@ export type IssueDefinition = {
   covering: string[];
   /** Official missing facts that keep this issue pending while askable. */
   pendingWhenMissing: FactId[];
-  /** If one of these issues is raised, this one is folded into it. */
-  subsumedBy?: string[];
+  /**
+   * Whether the answer needs a claim on this issue, given the other issues the user's stated
+   * facts raise. Default "required". "optional": a claim here may be added (e.g. a definition)
+   * but the answer does not depend on it.
+   */
+  need?: (raised: ReadonlySet<string>) => "required" | "optional";
   /** When every covering record is excluded by an explicit negative fact, ask this before abstaining. */
   rerouteTo?: FactId;
 };
@@ -103,14 +113,21 @@ const KB003: RecordPredicates = {
   issue: "acceleration_clause",
   groundingScope: "general",
   required: [
+    // Owner decision (T003): both may stay unverified; the answer then states them as conditions.
     {
       id: "installment_sale",
       basis: "KB-003 applicability: وجود بيع بالتقسيط",
       evaluate: (f) => all(f.isSale(), f.installments()),
       clarifiableBy: "relationship_nature",
+      mode: "conditional",
     },
     { id: "accelerates_remaining_installments", basis: "KB-003 applicability: الشرط يتعلق بتعجيل استحقاق الأقساط المتبقية", evaluate: (f) => f.accelerationClause() },
-    { id: "debtor_agreed_at_contract", basis: "KB-003 applicability: المدين رضي بالشرط عند التعاقد", evaluate: (f) => f.accelerationInContract() },
+    {
+      id: "debtor_agreed_at_contract",
+      basis: "KB-003 applicability: المدين رضي بالشرط عند التعاقد",
+      evaluate: (f) => f.debtorConsentedAtContract(),
+      mode: "conditional",
+    },
     {
       id: "no_new_monetary_increase",
       basis: "KB-003 applicability: لا توجد زيادة مالية جديدة لمجرد التأخير في هذا الوصف",
@@ -138,10 +155,12 @@ const KB004: RecordPredicates = {
       clarifiableBy: "ownership_before_sale",
     },
     { id: "sells_on_to_customer", basis: "KB-004 applicability: الجهة تبيع السلعة لاحقًا للعميل", evaluate: (f) => f.soldOnToCustomer() },
+    // Owner decision (T007): structural claims do not depend on it; not asked, shown as a limitation if unknown.
     {
       id: "known_profit_or_installments",
       basis: "KB-004 applicability: وجود ربح معلوم أو تقسيط",
       evaluate: (f) => (f.returnOrProfitStated() || f.installments() === "holds" ? "holds" : "unknown"),
+      mode: "conditional",
     },
   ],
   exclusions: [
@@ -225,8 +244,9 @@ export const PRODUCTION_ISSUES: IssueDefinition[] = [
     raisedWhen: (f) => f.selectionRelationship() === "sale" && f.installments() === "holds",
     covering: ["KB-002"],
     pendingWhenMissing: ["relationship_nature", "deferred_price_fixed_at_contract"],
-    // KB-001, KB-003 and KB-004 each address a specific term of an installment arrangement.
-    subsumedBy: ["deferred_price_above_cash", "acceleration_clause", "murabaha_structure"],
+    // Claim need: when the user's stated point is a price difference or an acceleration clause, the
+    // answer's claims are about that term; a claim on installment sale itself is then only optional.
+    need: (raised) => (raised.has("deferred_price_above_cash") || raised.has("acceleration_clause") ? "optional" : "required"),
   },
   {
     id: "acceleration_clause",

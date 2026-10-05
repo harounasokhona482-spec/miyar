@@ -192,7 +192,13 @@ export const CLAIM_STATUSES = ["supported", "partially_supported", "not_in_sourc
 export const GROUNDING_SCOPES = ["full", "structural_only"] as const;
 export type GroundingScope = (typeof GROUNDING_SCOPES)[number];
 
+/** structural: describes parties/sequence/forms only; general: may state the source's ruling. */
+export const CLAIM_SCOPES = ["general", "structural"] as const;
+
 const ClaimCheckSchema = z.strictObject({
+  /** Stable reference used by generation and citation verification: <source_id>-Cnn. */
+  claim_id: z.string().regex(/^KB-\d{3}-C\d{2}$/),
+  claim_scope: z.enum(CLAIM_SCOPES),
   claim: nonEmpty,
   status: z.enum(CLAIM_STATUSES),
   supporting_text: nonEmpty.optional(),
@@ -296,6 +302,13 @@ export const KnowledgeRecordV2Schema = z
         issue(["normalized_content"], "normalized_content must be exactly the supported claims, in order");
       }
     }
+    r.claims_check.forEach((c, i) => {
+      const expected = `${r.source_id}-C${String(i + 1).padStart(2, "0")}`;
+      if (c.claim_id !== expected) issue(["claims_check", i, "claim_id"], `claim_id must be ${expected} (stable, sequential)`);
+      if (r.editorial_constraints.grounding_scope === "structural_only" && c.claim_scope !== "structural") {
+        issue(["claims_check", i, "claim_scope"], "a structural_only record may hold structural claims only");
+      }
+    });
     if (r.scholarly_review.reviewed && (r.scholarly_review.reviewer === null || r.scholarly_review.reviewed_at === null)) {
       issue(["scholarly_review"], "reviewed=true requires reviewer and reviewed_at");
     }

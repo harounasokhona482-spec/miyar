@@ -124,8 +124,10 @@ describe("eval/fixtures isolation", () => {
     const walk = (dir: string) => {
       for (const name of readdirSync(dir)) {
         const path = join(dir, name);
-        if (statSync(path).isDirectory()) walk(path);
-        else if (/\.(ts|tsx)$/.test(name) && !/\.test\.ts$/.test(name)) {
+        // testdata/ is test-only (the benchmark harness reads fixtures); runtime code may not import it.
+        if (statSync(path).isDirectory()) {
+          if (name !== "testdata") walk(path);
+        } else if (/\.(ts|tsx)$/.test(name) && !/\.test\.ts$/.test(name)) {
           // Imports from eval/, or any string literal pointing into eval/fixtures (comments are fine).
           const source = readFileSync(path, "utf8");
           if (/from\s+["'][^"']*\beval[\\/]|["'`][^"'`\n]*\beval[\\/]+fixtures/.test(source)) offenders.push(path);

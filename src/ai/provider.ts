@@ -6,7 +6,7 @@
  * Only FakeProvider exists today. No real API is wired.
  */
 
-export type ModelTask = "transaction_extraction" | "clarification_extraction";
+export type ModelTask = "transaction_extraction" | "clarification_extraction" | "grounded_generation";
 
 export type ModelRequest = {
   task: ModelTask;

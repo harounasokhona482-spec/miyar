@@ -31,8 +31,14 @@ const SALE = ["بيع", "يبيع", "تبيع", "باع"];
 const PURCHASE_OR_OWN = ["شتر", "شراء", "شرائ", "ملك", "متلك", "مالك"];
 const NEGATION = /(?<!\p{L})(?:لا|ولا|لم|ليس|ليست|غير)(?!\p{L})|(?<!\p{L})فقط(?!\p{L})/u;
 const ACCELERATION = ["مستحق", "حلول", "تحل", "تعجيل", "فورا"];
-const CONTRACT_TERM = ["عقد", "شرط", "اتفاق", "ينص"];
-const RATE_OR_TIME = ["نسبه", "فائده", "فوائد", "سنوي", "شهري", "بالمئه"];
+/** Explicit consent («رضيت»، «وافقت»، «قبلت»), not the mere presence of a clause in a contract. */
+const CONSENT = ["رضي", "وافق", "قبلت"];
+const CONTRACTING_TIME = ["عقد", "تعاقد", "توقيع", "اتفاق"];
+/** A financial meaning that by itself ties the return to amount/time. */
+const RATE_TERMS = ["فائده", "فوائد", "نسبه", "بالمئه"];
+/** An increase/return word: needs an amount or time word alongside it. */
+const INCREASE_TERMS = ["زياد", "عائد", "ربح"];
+const AMOUNT_OR_TIME = ["سنوي", "شهري", "سنه", "شهر", "مده", "مبلغ", "مقترض"];
 
 export class TransactionFacts {
   constructor(readonly t: Transaction) {}
@@ -79,10 +85,17 @@ export class TransactionFacts {
     return explicit(this.t.return_or_profit);
   }
 
-  /** The stated return/increase is computed by amount or time (rate, interest, per year...). */
+  /**
+   * The stated return is tied to amount or time. A time word alone («شهري»، «سنوي») is not enough:
+   * it needs an explicit financial meaning — interest/rate, or an increase/return together with an
+   * amount or time word.
+   */
   increaseByAmountOrTime(): Tri {
     const f = this.t.return_or_profit;
-    return explicit(f) && hasStem(textOf(f), RATE_OR_TIME) ? "holds" : "unknown";
+    if (!explicit(f)) return "unknown";
+    const text = textOf(f);
+    const tied = hasStem(text, RATE_TERMS) || (hasStem(text, INCREASE_TERMS) && hasStem(text, AMOUNT_OR_TIME));
+    return tied ? "holds" : "unknown";
   }
 
   productStated(): boolean {
@@ -128,10 +141,17 @@ export class TransactionFacts {
     return hasStem(text, ACCELERATION) && hasStem(text, INSTALLMENT) ? "holds" : "unknown";
   }
 
-  /** The acceleration term is part of the contract (agreed when contracting). */
-  accelerationInContract(): Tri {
-    const f = this.t.late_penalty.details;
-    return explicit(f) && hasStem(comparable(f.evidence_span ?? ""), CONTRACT_TERM) ? "holds" : "unknown";
+  /**
+   * The debtor explicitly agreed to the term when contracting. A clause merely being in the
+   * contract («العقد يقول») is not consent: it needs a consent word and a contracting-time word.
+   */
+  debtorConsentedAtContract(): Tri {
+    return this.explicitFields().some(({ field }) => {
+      const span = comparable(field.evidence_span ?? "");
+      return hasStem(span, CONSENT) && hasStem(span, CONTRACTING_TIME);
+    })
+      ? "holds"
+      : "unknown";
   }
 
   feesStated(): boolean {

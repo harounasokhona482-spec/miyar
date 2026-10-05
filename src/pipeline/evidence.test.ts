@@ -1,157 +1,22 @@
-import { readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import kbV2 from "../../knowledge_base_v2.json";
-import testSetV2 from "../../test_set_v2.json";
-import { FakeProvider } from "../ai/fakeProvider";
-import { TestSetFileSchema, type EvalCase } from "../domain/schemas/evalCase";
-import { FixtureKnowledgeBaseFileSchema, type Position } from "../domain/schemas/knowledgeRecord";
-import type { Transaction } from "../domain/schemas/transaction";
-import { getRetrievalEligibleRecords, loadKnowledgeBase } from "../kb/loader";
-import { answerClarification, startClarification, type ClarificationStep } from "./clarification";
-import { evaluateEvidence, evidenceRecordInfo, type EvidenceRecordInfo, type EvidenceResult, type EvidenceStatus } from "./evidence";
-import { PRODUCTION_PREDICATES, extendPredicateTable, type PredicateTable } from "./evidencePredicates";
-import { userMessageOf } from "./extraction";
-import { detectMissingInformation, withOfficialMissingInformation } from "./missingInfo";
-import { buildRetrievalIndex, retrieveEvidencePool, toRetrievableRecord, type RetrievableRecord } from "./retrieval";
+import type { EvalCase } from "../domain/schemas/evalCase";
+import { answerClarification, startClarification } from "./clarification";
+import { evaluateEvidence, type EvidenceStatus } from "./evidence";
+import { PRODUCTION_PREDICATES } from "./evidencePredicates";
+import { withOfficialMissingInformation } from "./missingInfo";
+import { buildRetrievalIndex, retrieveEvidencePool } from "./retrieval";
 import { EXTRACTION_RESPONSES } from "./testdata/extractionResponses";
-import { FIXTURE_ISSUES, FIXTURE_RECORD_PREDICATES } from "./testdata/fixturePredicates";
-
-// ---------------------------------------------------------------------------
-// Harness: builds the evidence input for a benchmark case in its environment.
-// Fixtures are passed explicitly here; src never loads them.
-// ---------------------------------------------------------------------------
-
-const ROOT = resolve(__dirname, "../..");
-const suite = TestSetFileSchema.parse(testSetV2);
-const caseOf = (id: string) => suite.tests.find((t) => t.id === id)!;
-
-const kbResult = loadKnowledgeBase();
-if (!kbResult.ok) throw new Error("production KB failed to load");
-const productionRecords = getRetrievalEligibleRecords(kbResult.kb);
-
-type Environment = {
-  retrievable: RetrievableRecord[];
-  info: Map<string, EvidenceRecordInfo>;
-  table: PredicateTable;
-  positions: Position[];
-};
-
-function fixtureFile(name: string) {
-  return FixtureKnowledgeBaseFileSchema.parse(JSON.parse(readFileSync(join(ROOT, "eval", "fixtures", name), "utf8")));
-}
-
-function environmentFor(c: EvalCase): Environment {
-  const retrievable = c.kb_mode === "fixture_only" ? [] : productionRecords.map(toRetrievableRecord);
-  const info = new Map(c.kb_mode === "fixture_only" ? [] : productionRecords.map((r) => [r.source_id, evidenceRecordInfo(r)] as const));
-  let table = PRODUCTION_PREDICATES;
-  let positions: Position[] = [];
-  if (c.fixture) {
-    const fixture = fixtureFile(c.fixture);
-    // In a fixture-only environment the synthetic KB is the approved environment;
-    // mixed into production, synthetic records are never citable.
-    const citable = c.kb_mode === "fixture_only";
-    for (const r of fixture.records) {
-      retrievable.push({
-        source_id: r.source_id,
-        approved: r.approved,
-        category: r.category,
-        topic: r.topic,
-        retrieval_keywords: r.retrieval_keywords,
-        normalized_content: r.normalized_content,
-        source_summary: r.source_summary,
-        citation_eligible: citable,
-      });
-      info.set(r.source_id, { source_id: r.source_id, approved: r.approved, citation_eligible: citable });
-    }
-    positions = fixture.positions;
-    const fixtureRecords = FIXTURE_RECORD_PREDICATES.filter((p) => fixture.records.some((r) => r.source_id === p.source_id));
-    table =
-      c.kb_mode === "fixture_only"
-        ? { issues: FIXTURE_ISSUES, records: fixtureRecords, enforceMissingInformation: false }
-        : extendPredicateTable(PRODUCTION_PREDICATES, { issues: FIXTURE_ISSUES, records: fixtureRecords });
-  }
-  return { retrievable, info, table, positions };
-}
-
-function canned(id: string): Transaction {
-  return withOfficialMissingInformation(structuredClone(EXTRACTION_RESPONSES[id]!));
-}
-
-function evaluate(
-  c: EvalCase,
-  transaction: Transaction,
-  userTexts: string[],
-  clarification?: { maxRoundsReached?: boolean; unknownByUser?: string[] },
-  tweak: (env: Environment) => void = () => {},
-): EvidenceResult {
-  const env = environmentFor(c);
-  tweak(env);
-  const pool = retrieveEvidencePool(buildRetrievalIndex(env.retrievable), { userTexts, transaction });
-  return evaluateEvidence(
-    {
-      transaction,
-      missingFacts: detectMissingInformation(transaction).missingFacts,
-      candidates: pool.candidates,
-      records: env.info,
-      positions: env.positions,
-      ...(clarification ? { clarification } : {}),
-    },
-    env.table,
-  );
-}
-
-const firstTurn = (id: string) => evaluate(caseOf(id), canned(id), [caseOf(id).turns[0]!.user_message]);
-
-/** Free-text clarification replies answered by a fake model (only the targeted fields). */
-const E = <V>(value: V, evidence_span: string) => ({ value, provenance: "explicit" as const, evidence_span });
-const REPLIES: Record<string, object> = {
-  [caseOf("T021").turns[1]!.user_message]: {
-    ownership_transfer: E("البنك يشتري السيارة ويتملكها قبل بيعها", "البنك يشتري السيارة من المعرض ويتملكها أولًا"),
-  },
-  [caseOf("T020").turns[1]!.user_message]: {
-    "fees.type": E("مبلغ ثابت 15 درهمًا كل شهر مقابل استخدام خدمة التقسيط", "مبلغ ثابت 15 درهمًا كل شهر مقابل استخدام خدمة التقسيط"),
-  },
-  ...Object.fromEntries(caseOf("T023").turns.slice(1).map((t) => [t.user_message, { ownership_transfer: { value: null, provenance: "unknown" } }])),
-};
-const replyProvider = new FakeProvider((request) => {
-  const response = REPLIES[userMessageOf(request)];
-  if (!response) throw new Error("no canned clarification response");
-  return JSON.stringify(response);
-});
-
-/** Runs a benchmark conversation through clarification; returns the evidence result after every turn. */
-async function conversation(id: string, startFrom = id): Promise<{ step: ClarificationStep; evidence: EvidenceResult }[]> {
-  const c = caseOf(id);
-  const texts = [c.turns[0]!.user_message];
-  let step = startClarification(canned(startFrom));
-  const out: { step: ClarificationStep; evidence: EvidenceResult }[] = [];
-  const evidenceFor = (s: ClarificationStep) => {
-    if (s.outcome === "failed") throw new Error("clarification failed");
-    const closed =
-      s.outcome === "insufficient_after_unknown"
-        ? { unknownByUser: s.state.unknown_by_user }
-        : s.outcome === "max_rounds_reached"
-          ? { maxRoundsReached: true }
-          : undefined;
-    return evaluate(c, s.state.transaction, texts, closed);
-  };
-  out.push({ step, evidence: evidenceFor(step) });
-  for (const turn of c.turns.slice(1)) {
-    if (step.outcome !== "ask") break;
-    if (!["لا أعرف"].includes(turn.user_message)) texts.push(turn.user_message);
-    step = await answerClarification(step.state, turn.user_message, replyProvider);
-    out.push({ step, evidence: evidenceFor(step) });
-  }
-  return out;
-}
-
-const STATE_TO_STATUS: Record<string, EvidenceStatus> = {
-  GROUNDED: "sufficient",
-  NEEDS_CLARIFICATION: "needs_clarification",
-  INSUFFICIENT_EVIDENCE: "insufficient",
-  DISPUTED: "disputed",
-};
+import {
+  STATE_TO_STATUS,
+  canned,
+  caseOf,
+  conversation,
+  environmentFor,
+  evaluate,
+  firstTurn,
+  replyProvider,
+} from "./testdata/benchmarkHarness";
 
 // ---------------------------------------------------------------------------
 // Per-case behaviour
@@ -174,29 +39,65 @@ describe("benchmark cases", () => {
     expect(r.excludedCandidates.find((x) => x.source_id === "KB-001")!.reasons).toContain("issue_not_raised: deferred_price_above_cash");
   });
 
-  it("T003: KB-003 cannot be applied until the relationship is known (installment sale only, owner decision)", () => {
+  it("T003: KB-003 gives conditional general support; both unverified conditions are reported; nothing is asked", () => {
     const r = firstTurn("T003");
-    expect(r).toMatchObject({ status: "needs_clarification", missingFacts: ["relationship_nature"] });
+    expect(r).toMatchObject({
+      status: "sufficient",
+      supportingIds: ["KB-003"],
+      supportMode: "conditional",
+      groundingScope: "general",
+      answerableWithoutClarification: true,
+      askFacts: [],
+    });
+    expect(r.unverifiedConditions.map((c) => c.condition)).toEqual(["وجود بيع بالتقسيط", "المدين رضي بالشرط عند التعاقد"]);
     expect(r.supportingIds).not.toContain("KB-001");
   });
 
-  it("T003 after the user says it is a purchase: KB-003 supports; KB-001 (close BM25 score) does not", () => {
+  it("T003: a clause «in the contract» is not consent; an explicit consent makes that condition verified", () => {
     const t = canned("T003");
     t.relationship_type = { value: "sale", provenance: "explicit", evidence_span: "شراء سلعة أو خدمة بثمن مؤجل", evidence_origin: "clarification_choice" };
-    const r = evaluate(caseOf("T003"), withOfficialMissingInformation(t), [caseOf("T003").turns[0]!.user_message]);
-    expect(r).toMatchObject({ status: "sufficient", supportingIds: ["KB-003"], groundingScope: "general" });
+    const msg = [caseOf("T003").turns[0]!.user_message];
+    const saleOnly = evaluate(caseOf("T003"), withOfficialMissingInformation(t), msg);
+    expect(saleOnly).toMatchObject({ status: "sufficient", supportingIds: ["KB-003"], supportMode: "conditional" });
+    expect(saleOnly.unverifiedConditions.map((c) => c.condition)).toEqual(["المدين رضي بالشرط عند التعاقد"]);
+
+    t.late_penalty.details = {
+      value: "وافقت عند توقيع العقد على حلول الأقساط المتبقية عند التأخر",
+      provenance: "explicit",
+      evidence_span: "وافقت عند توقيع العقد على أن تصبح الأقساط المتبقية مستحقة",
+      evidence_origin: "clarification_free_text",
+    };
+    const consented = evaluate(caseOf("T003"), withOfficialMissingInformation(t), msg);
+    expect(consented).toMatchObject({ status: "sufficient", supportingIds: ["KB-003"], supportMode: "direct", unverifiedConditions: [] });
   });
 
   it("T004: KB-004 supports with structural scope only", () => {
     expect(firstTurn("T004")).toMatchObject({ status: "sufficient", supportingIds: ["KB-004"], groundingScope: "structural_general_information" });
   });
 
-  it("T005: KB-005 supports; KB-001 excluded because the transaction is a loan; KB-006 not established", () => {
+  it("T005: KB-005 supports; KB-001 excluded because the transaction is a loan; KB-006 optional («زيادة» + «سنة»)", () => {
     const r = firstTurn("T005");
-    expect(r).toMatchObject({ status: "sufficient", supportingIds: ["KB-005"] });
+    expect(r).toMatchObject({ status: "sufficient", supportingIds: ["KB-005"], optionalSupportingIds: ["KB-006"], supportMode: "direct" });
     const kb001 = r.excludedCandidates.find((x) => x.source_id === "KB-001")!;
     expect(kb001.reasons).toContain("exclusion: KB-001 must_not_generalize_to: قرض يشترط فيه رد مبلغ أكبر");
+  });
+
+  it("KB-006: a time word alone does not tie a return to amount or time", () => {
+    const t = canned("T005");
+    t.return_or_profit = { value: "يرد المبلغ نفسه شهريًا", provenance: "explicit", evidence_span: "أعيدها بعد سنة", evidence_origin: "initial_message" };
+    const r = evaluate(caseOf("T005"), withOfficialMissingInformation(t), [caseOf("T005").turns[0]!.user_message]);
+    expect(r.optionalSupportingIds).not.toContain("KB-006");
     expect(r.supportingIds).not.toContain("KB-006");
+  });
+
+  it("T007 after «يشتريها ويملكها ثم يبيعها لي»: KB-004 structural support without asking about profit", async () => {
+    const ask = startClarification(canned("T007"));
+    if (ask.outcome !== "ask") throw new Error("expected a question");
+    const answered = await answerClarification(ask.state, "يشتريها ويملكها ثم يبيعها لي", replyProvider);
+    if (answered.outcome === "failed") throw new Error("failed");
+    const r = evaluate(caseOf("T007"), answered.state.transaction, [caseOf("T007").turns[0]!.user_message]);
+    expect(r).toMatchObject({ status: "sufficient", supportingIds: ["KB-004"], groundingScope: "structural_general_information", askFacts: [] });
+    expect(r.unverifiedConditions.map((c) => c.condition)).toEqual(["وجود ربح معلوم أو تقسيط"]);
   });
 
   it("T006: needs the fee's nature before anything else", () => {
@@ -456,7 +357,7 @@ describe("predicate table integrity", () => {
 // ---------------------------------------------------------------------------
 
 describe("Evidence Decision Accuracy", () => {
-  it("matches the benchmark expectations except the documented T003 policy conflict", async () => {
+  it("matches every benchmark expectation", async () => {
     type Row = { label: string; expected: EvidenceStatus[]; got: EvidenceStatus };
     const rows: Row[] = [];
     const expect1 = (c: EvalCase, turn = 0) => c.turns[turn]!.accepted_states.map((s) => STATE_TO_STATUS[s]!).filter(Boolean);
@@ -479,12 +380,12 @@ describe("Evidence Decision Accuracy", () => {
     // Reported to the owner: accuracy = (rows - wrong) / rows.
     expect({ total: rows.length, correct: rows.length - wrong.length, wrong: wrong.map((w) => `${w.label}: expected ${w.expected.join("|")}, got ${w.got}`) }).toEqual({
       total: 25,
-      correct: 24,
-      wrong: ["T003: expected sufficient, got needs_clarification"],
+      correct: 25,
+      wrong: [],
     });
     // Rows: expected status (benchmark) → statuses produced.
     expect(confusion).toEqual({
-      sufficient: { sufficient: 6, needs_clarification: 1 },
+      sufficient: { sufficient: 7 },
       needs_clarification: { needs_clarification: 11 },
       insufficient: { insufficient: 5 },
       "needs_clarification|insufficient": { needs_clarification: 1 },

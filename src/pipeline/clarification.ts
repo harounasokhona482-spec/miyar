@@ -55,6 +55,8 @@ export type ClarificationStep =
   | { outcome: "continue"; state: ClarificationState }
   | { outcome: "insufficient_after_unknown"; state: ClarificationState; fact_id: FactId }
   | { outcome: "max_rounds_reached"; state: ClarificationState }
+  /** The evidence gate found that more questions cannot lead to a grounded answer. */
+  | { outcome: "stopped_by_evidence"; state: ClarificationState; reasons: string[] }
   | { outcome: "failed"; result: PipelineResult };
 
 const DONT_KNOW_VARIANTS = ["لا أعرف", "لا اعرف", "لا أعلم", "لا أدري", "ما أعرف", "مش عارف", "لست متأكدًا", "غير متأكد"].map(comparable);
@@ -84,12 +86,17 @@ function nextStep(current: ClarificationState): ClarificationStep {
   const missing = detectMissingInformation(state.transaction).missingFacts;
   const next = missing[0];
   if (!next) return { outcome: "continue", state: { ...state, pending: null } };
+  return askFact(state, next.id);
+}
+
+/** Asks one fact with its next template variant, within the round limit. */
+function askFact(state: ClarificationState, factId: FactId): ClarificationStep {
   if (state.rounds_used >= MAX_CLARIFICATION_ROUNDS) return { outcome: "max_rounds_reached", state: { ...state, pending: null } };
 
-  const attempt = (state.attempts[next.id] ?? 0) + 1;
-  const variant = variantFor(next.id, attempt);
+  const attempt = (state.attempts[factId] ?? 0) + 1;
+  const variant = variantFor(factId, attempt);
   const question: PendingQuestion = {
-    fact_id: next.id,
+    fact_id: factId,
     round: state.rounds_used + 1,
     attempt,
     question: variant.text(contextFor(state.transaction)),
@@ -98,7 +105,7 @@ function nextStep(current: ClarificationState): ClarificationStep {
   const newState: ClarificationState = {
     ...state,
     rounds_used: question.round,
-    attempts: { ...state.attempts, [next.id]: attempt },
+    attempts: { ...state.attempts, [factId]: attempt },
     pending: question,
   };
   const result = PipelineResultSchema.parse({
@@ -109,6 +116,32 @@ function nextStep(current: ClarificationState): ClarificationStep {
     clarification: { missing_fact: question.fact_id, question: question.question, options: question.options, round: question.round },
   });
   return { outcome: "ask", state: newState, question, result };
+}
+
+/**
+ * Lets the evidence gate steer clarification:
+ * - answerable now (sufficient / disputed): stop asking, even if a detail is missing;
+ * - insufficient: no approved record can settle the issue, so further questions are useless;
+ * - needs clarification: ask only the evidence gate's askFacts, first one with a reviewed template.
+ */
+export function stepAfterEvidence(
+  state: ClarificationState,
+  evidence: { status: string; askFacts: readonly string[]; answerableWithoutClarification: boolean; reasons: readonly string[] },
+): ClarificationStep {
+  try {
+    const settled: ClarificationState = { ...state, pending: null, transaction: withOfficialMissingInformation(state.transaction) };
+    if (evidence.answerableWithoutClarification) return { outcome: "continue", state: settled };
+    if (evidence.status === "insufficient") return { outcome: "stopped_by_evidence", state: settled, reasons: [...evidence.reasons] };
+    const blocked = state.unknown_by_user[0];
+    if (blocked) return { outcome: "insufficient_after_unknown", state: settled, fact_id: blocked };
+    const askable = evidence.askFacts.filter(
+      (f): f is FactId => f in CLARIFICATION_TEMPLATES && !state.unknown_by_user.includes(f as FactId),
+    );
+    if (askable.length === 0) return { outcome: "stopped_by_evidence", state: settled, reasons: ["no_reviewed_question_for_missing_fact"] };
+    return askFact(settled, askable[0]!);
+  } catch {
+    return { outcome: "failed", result: technicalErrorResult("clarification_failed") };
+  }
 }
 
 /** Starts clarification for a freshly extracted transaction. */

@@ -1,4 +1,5 @@
 import {
+  INSUFFICIENT_EVIDENCE_MESSAGE,
   OUT_OF_SCOPE_MESSAGE,
   PRODUCT_DISCLAIMER,
   REFERRAL_MESSAGE,
@@ -39,6 +40,17 @@ export function unsupportedLanguageResult(): PipelineResult {
     message: UNSUPPORTED_LANGUAGE_MESSAGE,
     disclaimer: PRODUCT_DISCLAIMER,
     insufficient_reason: "unsupported_language",
+  });
+}
+
+export function insufficientEvidenceResult(
+  reason: "no_supporting_source" | "unknown_material_fact" | "clarification_limit_reached" | "citation_verification_failed",
+): PipelineResult {
+  return PipelineResultSchema.parse({
+    state: "INSUFFICIENT_EVIDENCE",
+    message: INSUFFICIENT_EVIDENCE_MESSAGE,
+    disclaimer: PRODUCT_DISCLAIMER,
+    insufficient_reason: reason,
   });
 }
 
