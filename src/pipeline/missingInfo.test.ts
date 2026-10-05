@@ -20,7 +20,8 @@ describe("missing facts per benchmark case", () => {
     ["T001", []],
     ["T004", []],
     ["T005", []],
-    ["T006", ["fee_nature"]],
+    // A sale with a deferred price whose fixedness is not stated: asked after the fee (priority 5).
+    ["T006", ["fee_nature", "deferred_price_fixed_at_contract"]],
     ["T007", ["intermediary_role"]],
     ["T008", ["late_amount_nature"]],
     ["T009", ["ownership_before_sale"]],
@@ -89,6 +90,54 @@ describe("only explicit facts close a gap", () => {
   });
 });
 
+describe("loan_increase_conditioned_at_contract and deferred_price_fixed_at_contract", () => {
+  it("does not ask T005 again: the increase is stated as part of the agreement from the start", () => {
+    expect(ids(canned("T005"))).toEqual([]);
+  });
+
+  it("asks whether a loan increase was a condition when that is not stated", () => {
+    const t = canned("T005");
+    t.increase_conditioned_at_contract = U;
+    expect(ids(t)).toEqual(["loan_increase_conditioned_at_contract"]);
+  });
+
+  it("does not ask about conditioning when no increase is mentioned", () => {
+    const t = canned("T005");
+    t.increase_conditioned_at_contract = U;
+    t.return_or_profit = U;
+    expect(ids(t)).not.toContain("loan_increase_conditioned_at_contract");
+  });
+
+  it("asks it after the relationship becomes an explicit loan with an increase", () => {
+    const t = canned("T001");
+    t.category = "unknown";
+    t.relationship_type = E("loan", "اقتراض مبلغ من المال");
+    t.price_fixed_at_contract = U;
+    expect(ids(t)).toEqual(["loan_increase_conditioned_at_contract"]);
+  });
+
+  it("does not ask T001 again: the price was agreed from the start", () => {
+    expect(ids(canned("T001"))).toEqual([]);
+  });
+
+  it("asks whether the deferred price was fixed when that is not stated", () => {
+    const t = canned("T001");
+    t.price_fixed_at_contract = U;
+    expect(ids(t)).toEqual(["deferred_price_fixed_at_contract"]);
+  });
+
+  it("never asks it for murabaha (structural only) or for late-payment terms", () => {
+    expect(ids(canned("T009"))).not.toContain("deferred_price_fixed_at_contract");
+    expect(ids(canned("T008"))).not.toContain("deferred_price_fixed_at_contract");
+  });
+
+  it("an explicit «no» also closes the gap (the next stage handles it)", () => {
+    const t = canned("T001");
+    t.price_fixed_at_contract = E(false, "لا");
+    expect(ids(t)).toEqual([]);
+  });
+});
+
 describe("KB-004 structural-only: no question about the promise or possession", () => {
   it("never defines a fact about a binding promise or possession", () => {
     for (const id of FACT_IDS) {
@@ -100,22 +149,27 @@ describe("KB-004 structural-only: no question about the promise or possession", 
 
 describe("traceability: every rule comes from approved material", () => {
   const kb = new Map(kbV2.records.map((r) => [r.source_id, r]));
-  const requiredClarification = (caseId: string) =>
-    suite.tests.find((c) => c.id === caseId)!.turns.flatMap((t) => t.required_clarification).join(" | ");
+  const benchmarkText = (caseId: string, field: "required_clarification" | "required_reasoning_checks") => {
+    const c = suite.tests.find((t) => t.id === caseId)!;
+    const items = field === "required_clarification" ? c.turns.flatMap((t) => t.required_clarification) : c.required_reasoning_checks;
+    return items.join(" | ");
+  };
 
   it.each(FACT_IDS)("%s basis quotes existing editorial constraints or benchmark text", (id) => {
     for (const basis of factDefinition(id).basis) {
-      const kbRef = /^(KB-\d{3}) editorial (usage_notes|must_not_generalize_to): (.+)$/.exec(basis);
-      const testRef = /^test_set_v2 (T\d{3}) required_clarification: (.+)$/.exec(basis);
+      const kbRef = /^(KB-\d{3}) editorial (usage_notes|must_not_generalize_to|applicability_conditions): (.+)$/.exec(basis);
+      const testRef = /^test_set_v2 (T\d{3}) (required_clarification|required_reasoning_checks): (.+)$/.exec(basis);
       expect(kbRef ?? testRef, basis).not.toBeNull();
       if (kbRef) {
         const [, sourceId, field, text] = kbRef;
-        const list = kb.get(sourceId!)!.editorial_constraints[field as "usage_notes" | "must_not_generalize_to"];
-        expect(list, basis).toContain(text);
+        type EditorialList = "usage_notes" | "must_not_generalize_to" | "applicability_conditions";
+        expect(kb.get(sourceId!)!.editorial_constraints[field as EditorialList], basis).toContain(text);
       }
       if (testRef) {
-        const [, caseId, text] = testRef;
-        for (const part of text!.split("؛").map((s) => s.trim())) expect(requiredClarification(caseId!), basis).toContain(part);
+        const [, caseId, field, text] = testRef;
+        for (const part of text!.split("؛").map((s) => s.trim())) {
+          expect(benchmarkText(caseId!, field as "required_clarification"), basis).toContain(part);
+        }
       }
     }
   });

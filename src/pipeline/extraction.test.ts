@@ -10,9 +10,11 @@ import {
   establishedFactPaths,
   extractTransaction,
   listExtractedFields,
+  setExtractedField,
   userMessageOf,
   type ExtractionOutcome,
 } from "./extraction";
+import { withOfficialMissingInformation } from "./missingInfo";
 import { classifyPreGate } from "./safetyPreGate";
 import { EXTRACTION_RESPONSES } from "./testdata/extractionResponses";
 
@@ -35,6 +37,15 @@ function editedCase(id: string, edit: (t: Transaction) => void) {
   return providerReturning(JSON.stringify(t));
 }
 
+/** What extraction should return for a clean canned case: origins stamped, official missing information. */
+function expectedExtraction(id: string): Transaction {
+  const t = structuredClone(EXTRACTION_RESPONSES[id]!);
+  for (const { path, field } of listExtractedFields(t)) {
+    if (field.provenance === "explicit") setExtractedField(t, path, { ...field, evidence_origin: "initial_message" });
+  }
+  return withOfficialMissingInformation(t);
+}
+
 function expectOk(outcome: ExtractionOutcome) {
   if (!outcome.ok) throw new Error(`extraction failed: ${outcome.result.state} ${"error_code" in outcome.result ? outcome.result.error_code : ""}`);
   return outcome;
@@ -54,7 +65,30 @@ describe("benchmark cases through the fake provider", () => {
     expect(classifyPreGate(messageOf(id)).outcome).toBe("PASS");
     const { transaction, corrections } = expectOk(await extractTransaction(messageOf(id), benchmarkProvider));
     expect(corrections).toEqual([]);
-    expect(transaction).toEqual(EXTRACTION_RESPONSES[id]);
+    expect(transaction).toEqual(expectedExtraction(id));
+  });
+
+  it("stamps evidence_origin=initial_message on explicit fields and never on others", async () => {
+    const { transaction } = expectOk(await extractTransaction(messageOf("T004"), benchmarkProvider));
+    for (const { path, field } of listExtractedFields(transaction)) {
+      if (field.provenance === "explicit") expect(field.evidence_origin, path).toBe("initial_message");
+      else expect(field, path).not.toHaveProperty("evidence_origin");
+    }
+  });
+
+  it("overrides an evidence_origin the model tried to set", async () => {
+    const provider = editedCase("T009", (t) => {
+      t.financing_party = { ...t.financing_party, evidence_origin: "clarification_choice" };
+    });
+    const { transaction } = expectOk(await extractTransaction(messageOf("T009"), provider));
+    expect(transaction.financing_party.evidence_origin).toBe("initial_message");
+  });
+
+  it("replaces the model's missing_information with deterministic fact ids", async () => {
+    const { transaction } = expectOk(await extractTransaction(messageOf("T009"), benchmarkProvider));
+    expect(EXTRACTION_RESPONSES.T009!.missing_information[0]).toMatch(/البنك/); // what the model said
+    expect(transaction.missing_information).toEqual(["ownership_before_sale"]);
+    expect(transaction.needs_clarification).toBe(true);
   });
 
   it("T001: an installment sale with explicit prices and term", async () => {
@@ -114,7 +148,12 @@ describe("benchmark cases through the fake provider", () => {
 describe("provenance rules", () => {
   it("accepts an explicit field whose evidence_span is in the user's words", async () => {
     const { transaction: t } = expectOk(await extractTransaction(messageOf("T009"), benchmarkProvider));
-    expect(t.financing_party).toEqual({ value: "البنك", provenance: "explicit", evidence_span: "البنك سيمول السيارة" });
+    expect(t.financing_party).toEqual({
+      value: "البنك",
+      provenance: "explicit",
+      evidence_span: "البنك سيمول السيارة",
+      evidence_origin: "initial_message",
+    });
   });
 
   it("downgrades an explicit field whose evidence_span is not in the input to unknown", async () => {
@@ -210,7 +249,7 @@ describe("provenance rules", () => {
     expect(corrections[0]).toMatchObject({ path: "possible_classification", reason: "ruling_language_in_value" });
   });
 
-  it("marks needs_clarification when missing information is listed", async () => {
+  it("recomputes needs_clarification deterministically, whatever the model says", async () => {
     const provider = editedCase("T008", (t) => {
       t.needs_clarification = false;
     });

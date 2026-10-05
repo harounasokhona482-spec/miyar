@@ -19,6 +19,8 @@ export function blankTransaction(overrides: Partial<Transaction> = {}): Transact
     financing_party: unknown,
     ownership_transfer: unknown,
     return_or_profit: unknown,
+    price_fixed_at_contract: unknown,
+    increase_conditioned_at_contract: unknown,
     missing_information: [],
     needs_clarification: false,
     ...overrides,

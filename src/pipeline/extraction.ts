@@ -5,12 +5,14 @@ import {
   RelationshipTypeSchema,
   TransactionSchema,
   extractedField,
+  type EvidenceOrigin,
   type Provenance,
   type Transaction,
 } from "../domain/schemas/transaction";
 import { arabicPhrase, matchesAny, normalizeArabic } from "../text/arabic";
 import { RULING_TERMS } from "../text/rulingTerms";
 import { comparable, numbersIn, validateMaterialEvidence } from "./evidenceValidators";
+import { withOfficialMissingInformation } from "./missingInfo";
 import { technicalErrorResult } from "./results";
 
 /**
@@ -61,8 +63,8 @@ Return only one JSON object matching the provided schema. For every field:
 - "explicit": the user stated it. Put the value and copy the exact words from the user's message into evidence_span (verbatim, contiguous).
 - "inferred": you derived it but the user did not state it. Put the value and NO evidence_span. It will not be treated as a fact.
 - "unknown": not stated. Set value to null and NO evidence_span.
-Never invent facts. In particular, do not assume who owns the goods, what a fee is for, or whether an amount is added to a debt unless the user said so.
-List what is missing to understand the transaction in missing_information (short Arabic phrases) and set needs_clarification accordingly.`;
+Never invent facts. In particular, do not assume who owns the goods, what a fee is for, whether an amount is added to a debt, whether a price was fixed at the agreement, or whether a loan increase was a condition, unless the user said so.
+Do not set evidence_origin. missing_information and needs_clarification are recomputed by the system; return [] and false.`;
 
 function wrapUserMessage(message: string): string {
   // Neutralize tag look-alikes so user text cannot close the data block.
@@ -90,7 +92,16 @@ export function buildExtractionRequest(message: string): ModelRequest {
 // Grounding checks
 // ---------------------------------------------------------------------------
 
-export type Field = { value: unknown; provenance: Provenance; evidence_span?: string };
+export type Field = { value: unknown; provenance: Provenance; evidence_span?: string; evidence_origin?: EvidenceOrigin };
+
+/** Marks every explicit field with where its evidence came from (the model cannot set this). */
+function stampOrigin(field: Field, origin: EvidenceOrigin): Field {
+  if (field.provenance !== "explicit") {
+    const { evidence_origin: _ignored, ...rest } = field;
+    return rest;
+  }
+  return { ...field, evidence_origin: origin };
+}
 
 /** Every provenance-tracked field with its path. */
 export function listExtractedFields(t: Transaction): { path: string; field: Field }[] {
@@ -108,6 +119,8 @@ export function listExtractedFields(t: Transaction): { path: string; field: Fiel
     { path: "financing_party", field: t.financing_party },
     { path: "ownership_transfer", field: t.ownership_transfer },
     { path: "return_or_profit", field: t.return_or_profit },
+    { path: "price_fixed_at_contract", field: t.price_fixed_at_contract },
+    { path: "increase_conditioned_at_contract", field: t.increase_conditioned_at_contract },
   ];
   t.parties.forEach((p, i) => out.push({ path: `parties.${i}.description`, field: p.description }));
   return out;
@@ -163,13 +176,11 @@ function groundInUserText(t: Transaction, input: string): { transaction: Transac
   const corrections: ExtractionCorrection[] = [];
   for (const { path, field } of listExtractedFields(transaction)) {
     const finding = check(path, field, input);
-    if (finding) {
-      corrections.push({ path, reason: finding.reason, original: structuredClone(field) });
-      setExtractedField(transaction, path, downgraded(field, finding.to));
-    }
+    if (finding) corrections.push({ path, reason: finding.reason, original: structuredClone(field) });
+    setExtractedField(transaction, path, stampOrigin(finding ? downgraded(field, finding.to) : field, "initial_message"));
   }
-  if (transaction.missing_information.length > 0) transaction.needs_clarification = true;
-  return { transaction, corrections };
+  // The model's missing_information is discarded: deterministic detection is the official source.
+  return { transaction: withOfficialMissingInformation(transaction), corrections };
 }
 
 // ---------------------------------------------------------------------------
@@ -256,6 +267,8 @@ const TARGETABLE_FIELDS = {
   financing_party: extractedField(nonEmptyText),
   "fees.type": extractedField(nonEmptyText),
   "late_penalty.details": extractedField(nonEmptyText),
+  price_fixed_at_contract: extractedField(z.boolean()),
+  increase_conditioned_at_contract: extractedField(z.boolean()),
 } as const;
 export type TargetablePath = keyof typeof TARGETABLE_FIELDS;
 
@@ -315,7 +328,7 @@ export async function extractClarificationAnswer(
     const field: Field = structuredClone(parsed.data);
     const finding = check(path, field, reply); // spans are checked against the reply only
     if (finding) corrections.push({ path, reason: finding.reason, original: structuredClone(field) });
-    fields[path] = finding ? downgraded(field, finding.to) : field;
+    fields[path] = stampOrigin(finding ? downgraded(field, finding.to) : field, "clarification_free_text");
   }
   return { ok: true, fields, corrections };
 }

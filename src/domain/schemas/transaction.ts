@@ -11,12 +11,22 @@ export const PROVENANCE = ["explicit", "inferred", "unknown"] as const;
 export const ProvenanceSchema = z.enum(PROVENANCE);
 export type Provenance = z.infer<typeof ProvenanceSchema>;
 
+/**
+ * Where the words in evidence_span came from. Set by the pipeline, never by
+ * the model: the user's first message, a clarification option the user
+ * chose, or a free-text clarification reply.
+ */
+export const EVIDENCE_ORIGINS = ["initial_message", "clarification_choice", "clarification_free_text"] as const;
+export const EvidenceOriginSchema = z.enum(EVIDENCE_ORIGINS);
+export type EvidenceOrigin = z.infer<typeof EvidenceOriginSchema>;
+
 export function extractedField<V>(valueSchema: z.ZodType<V>) {
   return z
     .object({
       value: valueSchema.nullable(),
       provenance: ProvenanceSchema,
       evidence_span: z.string().min(1).optional(),
+      evidence_origin: EvidenceOriginSchema.optional(),
     })
     .superRefine((field, ctx) => {
       if (field.provenance === "explicit") {
@@ -35,6 +45,9 @@ export function extractedField<V>(valueSchema: z.ZodType<V>) {
       }
       if (field.provenance !== "explicit" && field.evidence_span !== undefined) {
         ctx.addIssue({ code: "custom", path: ["evidence_span"], message: "evidence_span is only allowed on explicit fields" });
+      }
+      if (field.provenance !== "explicit" && field.evidence_origin !== undefined) {
+        ctx.addIssue({ code: "custom", path: ["evidence_origin"], message: "evidence_origin is only allowed on explicit fields" });
       }
     });
 }
@@ -102,6 +115,11 @@ export const TransactionSchema = z.object({
   financing_party: extractedField(text),
   ownership_transfer: extractedField(text),
   return_or_profit: extractedField(text),
+  /** Deferred/final price fixed and known when agreed (KB-001/KB-002 applicability). */
+  price_fixed_at_contract: extractedField(z.boolean()),
+  /** Loan increase conditioned when the loan was made (KB-005/KB-006 applicability). */
+  increase_conditioned_at_contract: extractedField(z.boolean()),
+  /** Set by deterministic missing-information detection (fact ids), never by the model. */
   missing_information: z.array(text),
   needs_clarification: z.boolean(),
 });

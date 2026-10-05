@@ -86,15 +86,25 @@ describe("first question per case", () => {
 });
 
 describe("option answers update only the target field", () => {
-  it("T006: a fee option sets fees.type and nothing else", async () => {
+  it("T006: a fee option sets fees.type and nothing else, then the deferred price is asked", async () => {
     const before = canned("T006");
     const ask = expectAsk(startClarification(before));
-    const step = await answerClarification(ask.state, "مبلغ ثابت مقابل خدمة محددة", noProvider);
-    expect(step.outcome).toBe("continue");
-    if (step.outcome !== "continue") return;
-    expect(step.state.transaction.fees.type).toEqual(E("مبلغ ثابت مقابل خدمة محددة", "مبلغ ثابت مقابل خدمة محددة"));
-    expect(fieldsExcept(step.state.transaction, ["fees.type"])).toEqual(fieldsExcept(before, ["fees.type"]));
-    expect(step.state.answers[0]).toMatchObject({ via: "option", resolved: true });
+    const second = expectAsk(await answerClarification(ask.state, "مبلغ ثابت مقابل خدمة محددة", noProvider));
+    expect(second.state.transaction.fees.type).toEqual({
+      ...E("مبلغ ثابت مقابل خدمة محددة", "مبلغ ثابت مقابل خدمة محددة"),
+      evidence_origin: "clarification_choice",
+    });
+    expect(fieldsExcept(second.state.transaction, ["fees.type"])).toEqual(fieldsExcept(before, ["fees.type"]));
+    expect(second.state.answers[0]).toMatchObject({ via: "option", resolved: true });
+    expect(second.question).toMatchObject({ fact_id: "deferred_price_fixed_at_contract", round: 2 });
+
+    const done = await answerClarification(second.state, "نعم", noProvider);
+    expect(done.outcome).toBe("continue");
+    if (done.outcome === "continue") {
+      expect(done.state.transaction.price_fixed_at_contract).toMatchObject({ value: true, evidence_origin: "clarification_choice" });
+      expect(done.state.transaction.missing_information).toEqual([]);
+      expect(done.state.transaction.needs_clarification).toBe(false);
+    }
   });
 
   it("T008: the late-amount option resolves the first question", async () => {
@@ -144,6 +154,7 @@ describe("free-text answers (T009 → T021)", () => {
     if (step.outcome !== "continue") return;
     const ownership = step.state.transaction.ownership_transfer;
     expect(ownership.provenance).toBe("explicit");
+    expect(ownership.evidence_origin).toBe("clarification_free_text");
     expect(comparable(t021Reply)).toContain(comparable(ownership.evidence_span!));
     expect(provider.calls).toHaveLength(1);
     expect(userMessageOf(provider.calls[0]!)).toBe(t021Reply);

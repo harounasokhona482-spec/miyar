@@ -22,7 +22,12 @@ export type QuestionVariant = { text: (ctx: TemplateContext) => string; options:
 export type FactTemplate = { factId: FactId; targets: TargetablePath[]; variants: QuestionVariant[] };
 export type TemplateContext = { party: string };
 
-const explicit = (value: unknown, label: string): Field => ({ value, provenance: "explicit", evidence_span: label });
+const explicit = (value: unknown, label: string): Field => ({
+  value,
+  provenance: "explicit",
+  evidence_span: label,
+  evidence_origin: "clarification_choice",
+});
 const inferred = (value: unknown): Field => ({ value, provenance: "inferred" });
 
 function option(label: string, patch: (label: string, ctx: TemplateContext) => FieldPatch[]): OptionTemplate {
@@ -118,6 +123,62 @@ export const CLARIFICATION_TEMPLATES: Record<FactId, FactTemplate> = {
         options: [
           option(YES, (l) => [{ path: "ownership_transfer", field: explicit("العقد يذكر أن الجهة الممولة اشترت السلعة باسمها أولًا", l) }]),
           option(NO, (l) => [{ path: "ownership_transfer", field: explicit("العقد لا يذكر أن الجهة الممولة اشترت السلعة باسمها", l) }]),
+        ],
+      },
+    ],
+  },
+
+  loan_increase_conditioned_at_contract: {
+    factId: "loan_increase_conditioned_at_contract",
+    targets: ["increase_conditioned_at_contract"],
+    variants: [
+      {
+        text: () => "هل كانت الزيادة متفقًا عليها كشرط عند إنشاء القرض؟",
+        options: [
+          option("نعم، كانت مشروطة من البداية", (l) => [{ path: "increase_conditioned_at_contract", field: explicit(true, l) }]),
+          option("لا، لم تكن مشروطة", (l) => [{ path: "increase_conditioned_at_contract", field: explicit(false, l) }]),
+        ],
+      },
+      {
+        text: () => "عند أخذ القرض، هل اتفقت مع المقرض على أن ترد مبلغًا أكبر مما أخذت؟",
+        options: [
+          option(YES, (l) => [{ path: "increase_conditioned_at_contract", field: explicit(true, l) }]),
+          option(NO, (l) => [{ path: "increase_conditioned_at_contract", field: explicit(false, l) }]),
+        ],
+      },
+      {
+        text: () => "هل ذُكر مقدار الزيادة عند الاتفاق على القرض نفسه؟",
+        options: [
+          option(YES, (l) => [{ path: "increase_conditioned_at_contract", field: explicit(true, l) }]),
+          option(NO, (l) => [{ path: "increase_conditioned_at_contract", field: explicit(false, l) }]),
+        ],
+      },
+    ],
+  },
+
+  deferred_price_fixed_at_contract: {
+    factId: "deferred_price_fixed_at_contract",
+    targets: ["price_fixed_at_contract"],
+    variants: [
+      {
+        text: () => "هل الثمن النهائي الذي ستدفعه محدد ومعلوم عند الاتفاق؟",
+        options: [
+          option(YES, (l) => [{ path: "price_fixed_at_contract", field: explicit(true, l) }]),
+          option(NO, (l) => [{ path: "price_fixed_at_contract", field: explicit(false, l) }]),
+        ],
+      },
+      {
+        text: () => "هل اتُّفق على المبلغ الإجمالي الذي ستدفعه منذ بداية التعاقد؟",
+        options: [
+          option(YES, (l) => [{ path: "price_fixed_at_contract", field: explicit(true, l) }]),
+          option(NO, (l) => [{ path: "price_fixed_at_contract", field: explicit(false, l) }]),
+        ],
+      },
+      {
+        text: () => "هل يذكر العقد المبلغ الإجمالي الذي ستدفعه؟",
+        options: [
+          option(YES, (l) => [{ path: "price_fixed_at_contract", field: explicit(true, l) }]),
+          option(NO, (l) => [{ path: "price_fixed_at_contract", field: explicit(false, l) }]),
         ],
       },
     ],

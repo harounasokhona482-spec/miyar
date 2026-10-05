@@ -27,6 +27,8 @@ function base(overrides: Partial<Transaction>): Transaction {
     financing_party: U,
     ownership_transfer: U,
     return_or_profit: U,
+    price_fixed_at_contract: U,
+    increase_conditioned_at_contract: U,
     missing_information: [],
     needs_clarification: false,
     ...overrides,
@@ -45,6 +47,7 @@ export const EXTRACTION_RESPONSES: Readonly<Record<string, Transaction>> = {
       "سعر التقسيط 3400 درهم مقابل 3000 درهم نقدًا، متفق عليه من البداية",
       "سعره نقدًا 3000 درهم، وإذا اشتريته بالتقسيط يكون السعر 3400 درهم",
     ),
+    price_fixed_at_contract: E(true, "وتم الاتفاق من البداية على سعر 3400"),
   }),
 
   T004: base({
@@ -61,6 +64,7 @@ export const EXTRACTION_RESPONSES: Readonly<Record<string, Transaction>> = {
     financing_party: E("شركة تمويل", "شركة تمويل"),
     ownership_transfer: E("الشركة تشتري السيارة أولًا ثم تبيعها للمستخدم", "والشركة ستشتريها أولًا ثم تبيعها لي"),
     return_or_profit: E("ثمن معلوم", "بثمن معلوم"),
+    price_fixed_at_contract: E(true, "بثمن معلوم"),
   }),
 
   T005: base({
@@ -74,6 +78,7 @@ export const EXTRACTION_RESPONSES: Readonly<Record<string, Transaction>> = {
       "يرد 11,000 عن قرض 10,000، والزيادة مشروطة من البداية",
       "أقرضني 10,000 وقال أعيدها بعد سنة 11,000، والزيادة جزء من الاتفاق من البداية",
     ),
+    increase_conditioned_at_contract: E(true, "والزيادة جزء من الاتفاق من البداية"),
   }),
 
   T006: base({

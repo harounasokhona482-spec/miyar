@@ -54,6 +54,10 @@ export const SALE_STEMS = ["شتر", "شراء", "شرائ", "بيع", "باع",
 export const LOAN_STEMS = ["قرض", "قترض", "سلف"] as const; // أقرض، اقترض، سلف، استلف
 export const MURABAHA_STEMS = ["مرابح"] as const;
 export const FEE_STEMS = ["رسوم", "رسم", "اشتراك", "عموله", "مصاريف", "اجره", "تكلفه", "نسبه", "فائده"] as const;
+/** The price was fixed/known/agreed: «ثابت»، «محدد»، «معلوم»، «متفق»، «الاتفاق»، «نهائي». */
+export const PRICE_FIXED_STEMS = ["ثابت", "محدد", "معلوم", "متفق", "اتفاق", "نهائي"] as const;
+/** The increase was a condition/agreement: «مشروط»، «شرط»، «اشترط»، «متفق»، «الاتفاق». */
+export const CONDITIONED_STEMS = ["شرط", "شروط", "شترط", "متفق", "اتفاق"] as const;
 
 /** How a calculation basis of a fee is stated (fixed / percentage / varies with amount or term). */
 const FEE_BASIS = /(?<!\p{L})(?:ثابت\p{L}*|مقطوع\p{L}*|نسبه|بنسبه|ت?يتغير|تتغير|(?:ت|ي)?(?:ختلف|زيد)\s+(?:ب)?حسب\s+(?:قيمه|المبلغ|مبلغ|المده|مده))(?!\p{L})/u;
@@ -85,6 +89,10 @@ export function validateMaterialEvidence(path: string, field: Explicit): Downgra
       return spanHasStem(span, FEE_STEMS) && spanCoversValue(value, span) ? null : unknown;
     case "late_penalty.details":
       return spanCoversValue(value, span) ? null : unknown;
+    case "price_fixed_at_contract":
+      return spanHasStem(span, PRICE_FIXED_STEMS) ? null : unknown;
+    case "increase_conditioned_at_contract":
+      return spanHasStem(span, CONDITIONED_STEMS) ? null : unknown;
     case "relationship_type": {
       const stems = value === "sale" ? SALE_STEMS : value === "loan" ? LOAN_STEMS : value === "murabaha" ? MURABAHA_STEMS : null;
       // An analytical label: keep it, but only as inferred.

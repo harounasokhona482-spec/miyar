@@ -5,7 +5,7 @@ import type { Transaction } from "../domain/schemas/transaction";
 import { CLARIFICATION_TEMPLATES, type OptionTemplate, type QuestionVariant } from "./clarificationTemplates";
 import { comparable } from "./evidenceValidators";
 import { extractClarificationAnswer, setExtractedField, type ExtractionCorrection, type Field } from "./extraction";
-import { detectMissingInformation, type FactId } from "./missingInfo";
+import { detectMissingInformation, withOfficialMissingInformation, type FactId } from "./missingInfo";
 import { technicalErrorResult } from "./results";
 
 /**
@@ -73,7 +73,10 @@ function variantFor(factId: FactId, attempt: number): QuestionVariant {
   return variants[Math.min(attempt, variants.length) - 1]!;
 }
 
-function nextStep(state: ClarificationState): ClarificationStep {
+function nextStep(current: ClarificationState): ClarificationStep {
+  // missing_information on the transaction always mirrors deterministic detection.
+  const state: ClarificationState = { ...current, transaction: withOfficialMissingInformation(current.transaction) };
+
   // A material fact the user cannot provide: stop, do not keep asking.
   const blocked = state.unknown_by_user[0];
   if (blocked) return { outcome: "insufficient_after_unknown", state, fact_id: blocked };
