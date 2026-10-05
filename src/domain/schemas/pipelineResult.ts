@@ -73,9 +73,10 @@ const NeedsClarificationSchema = z.object({
   clarification: z.object({
     missing_fact: z.string().min(1),
     question: z.string().min(1),
+    // A free-text question offers only "لا أعرف"; option questions add their choices.
     options: z
       .array(z.string().min(1))
-      .min(2)
+      .min(1)
       .refine((o) => o.includes(DONT_KNOW_OPTION), { message: `options must include "${DONT_KNOW_OPTION}"` }),
     round: z.number().int().min(1).max(MAX_CLARIFICATION_ROUNDS),
   }),

@@ -79,14 +79,14 @@ export const EXTRACTION_RESPONSES: Readonly<Record<string, Transaction>> = {
   T006: base({
     category: "bnpl",
     possible_classification: I("شراء بالتقسيط عبر تطبيق"),
-    parties: [{ role: "app", description: E("تطبيق", "من تطبيق") }],
+    relationship_type: E("sale", "أشتري بالتقسيط"),
+    parties: [{ role: "seller_app", description: E("تطبيق", "من تطبيق") }],
     payment_method: E("تقسيط", "أشتري بالتقسيط"),
     fees: {
       exists: E(true, "بسبب رسوم التطبيق"),
       type: U,
       amount_or_rate: E("أعلى قليلًا", "والسعر أعلى قليلًا"),
     },
-    financing_party: E("التطبيق", "من تطبيق"),
     missing_information: ["طبيعة رسوم التطبيق", "هل تتغير الرسوم مع قيمة التمويل أو المدة"],
     needs_clarification: true,
   }),

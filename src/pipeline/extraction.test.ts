@@ -157,6 +157,50 @@ describe("provenance rules", () => {
     }
   });
 
+  it("rejects ownership that the span only names a party for (value «البنك يملك السيارة», span «البنك»)", async () => {
+    const provider = editedCase("T009", (t) => {
+      t.ownership_transfer = { value: "البنك يملك السيارة", provenance: "explicit", evidence_span: "البنك" };
+    });
+    const { transaction, corrections } = expectOk(await extractTransaction(messageOf("T009"), provider));
+    expect(transaction.ownership_transfer).toEqual({ value: null, provenance: "unknown" });
+    expect(corrections[0]).toMatchObject({ path: "ownership_transfer", reason: "insufficient_lexical_evidence" });
+  });
+
+  it("keeps ownership explicit when the span carries a purchase/ownership verb (T004)", async () => {
+    const { transaction } = expectOk(await extractTransaction(messageOf("T004"), benchmarkProvider));
+    expect(transaction.ownership_transfer.provenance).toBe("explicit");
+  });
+
+  it("rejects a financing_party value that claims a role the span does not state", async () => {
+    const provider = editedCase("T009", (t) => {
+      t.financing_party = { value: "البنك الذي يشتري السيارة", provenance: "explicit", evidence_span: "البنك سيمول" };
+    });
+    const { transaction, corrections } = expectOk(await extractTransaction(messageOf("T009"), provider));
+    expect(transaction.financing_party.provenance).toBe("unknown");
+    expect(corrections[0]).toMatchObject({ path: "financing_party", reason: "insufficient_lexical_evidence" });
+  });
+
+  it("rejects an invented fee type and an invented late-penalty description", async () => {
+    const fee = editedCase("T006", (t) => {
+      t.fees.type = { value: "رسوم خدمة ثابتة", provenance: "explicit", evidence_span: "بسبب رسوم التطبيق" };
+    });
+    expect(expectOk(await extractTransaction(messageOf("T006"), fee)).transaction.fees.type.provenance).toBe("unknown");
+
+    const late = editedCase("T008", (t) => {
+      t.late_penalty.details = { value: "غرامة تضاف إلى الدين", provenance: "explicit", evidence_span: "هناك مبلغ إذا تأخرت في الدفع" };
+    });
+    expect(expectOk(await extractTransaction(messageOf("T008"), late)).transaction.late_penalty.details.provenance).toBe("unknown");
+  });
+
+  it("keeps an unproven relationship_type only as inferred", async () => {
+    const provider = editedCase("T009", (t) => {
+      t.relationship_type = { value: "loan", provenance: "explicit", evidence_span: "البنك سيمول" };
+    });
+    const { transaction, corrections } = expectOk(await extractTransaction(messageOf("T009"), provider));
+    expect(transaction.relationship_type).toEqual({ value: "loan", provenance: "inferred" });
+    expect(corrections[0]).toMatchObject({ path: "relationship_type", reason: "insufficient_lexical_evidence" });
+  });
+
   it("removes ruling language from an extracted value", async () => {
     const provider = editedCase("T005", (t) => {
       t.possible_classification = { value: "قرض ربوي محرم", provenance: "inferred" };
