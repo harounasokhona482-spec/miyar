@@ -179,6 +179,28 @@ describe("end-to-end with the fake provider", () => {
   });
 });
 
+describe("negated financial facts never count as a stated increase", () => {
+  it("T002 with «لا توجد أي زيادة» extracted as return_or_profit (seen from the real model) still cites KB-002 only", async () => {
+    const t = structuredClone(EXTRACTION_RESPONSES.T002!);
+    t.return_or_profit = { value: "لا توجد أي زيادة إذا التزمت بالمواعيد", provenance: "explicit", evidence_span: "ولا توجد أي زيادة إذا التزمت بالمواعيد" };
+    const d = deps(e2eProvider({ transaction_extraction: () => JSON.stringify(t) }));
+    const r = expectState((await ask({ message: first("T002") }, d)).response, "GROUNDED");
+    expect([...new Set(r.answer.claims.map((c) => c.source_id))]).toEqual(["KB-002"]);
+  });
+
+  it("a loan stated as «بدون فائدة» is neither asked about a conditioned increase nor answered from KB-005/KB-006", async () => {
+    const message = "شخص أقرضني 5,000 وقال أعيدها بعد سنة بدون فائدة.";
+    const t = structuredClone(EXTRACTION_RESPONSES.T005!);
+    t.payment_schedule = { value: "السداد بعد سنة", provenance: "explicit", evidence_span: "أعيدها بعد سنة" };
+    t.return_or_profit = { value: "بدون فائدة", provenance: "explicit", evidence_span: "بدون فائدة" };
+    t.increase_conditioned_at_contract = { value: null, provenance: "unknown" };
+    const provider = e2eProvider({ transaction_extraction: () => JSON.stringify(t) });
+    const r = await ask({ message }, deps(provider));
+    expect(r.response.state).toBe("INSUFFICIENT_EVIDENCE");
+    expect(provider.calls.some((c) => c.task === "grounded_generation")).toBe(false);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Failures never break the orchestrator
 // ---------------------------------------------------------------------------

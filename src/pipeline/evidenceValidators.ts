@@ -59,6 +59,30 @@ export const PRICE_FIXED_STEMS = ["ثابت", "محدد", "معلوم", "متف�
 /** The increase was a condition/agreement: «مشروط»، «شرط»، «اشترط»، «متفق»، «الاتفاق». */
 export const CONDITIONED_STEMS = ["شرط", "شروط", "شترط", "متفق", "اتفاق"] as const;
 
+/** Negators, compared after one leading و/ف: «لا»، «ولا»، «بدون»، «دون»، «بلا»، «من غير»، «خالية من»… */
+const NEGATORS = new Set(["لا", "لم", "لن", "ليس", "ليست", "بدون", "دون", "بلا", "غير", "بغير", "خال", "خالي", "خاليه"]);
+/** Words that may stand between a negator and the increase it denies: «لا توجد أي زيادة». */
+const NEGATION_FILLERS = new Set(["يوجد", "توجد", "هناك", "هنالك", "اي", "فيه", "فيها", "عليه", "عليها", "له", "لها", "يضاف", "تضاف", "يكون", "تكون", "من"]);
+/** Increase / interest / return words: زيادة، يزيد، يزداد، فائدة، فوائد، ربح، أرباح، عائد، عوائد. */
+const INCREASE_STEMS = ["زياد", "يزيد", "تزيد", "زداد", "فائد", "فوائد", "ربح", "رباح", "عائد", "عوائد"] as const;
+
+/**
+ * The text explicitly denies an increase/interest/return: a negator, at most three filler words,
+ * then an increase word («لا توجد زيادة»، «بدون فائدة»، «المبلغ نفسه دون زيادة»، «لا يزيد المبلغ»).
+ * A negation about something else («إذا لم أدفع تزيد الأقساط») does not count.
+ */
+export function negatesIncrease(text: string): boolean {
+  const words = tokens(text);
+  return words.some((word, i) => {
+    if (!NEGATORS.has(word.replace(/^[وف](?=\p{L}{2,})/u, ""))) return false;
+    for (let j = i + 1; j < words.length && j <= i + 4; j++) {
+      if (INCREASE_STEMS.some((stem) => words[j]!.includes(stem))) return true;
+      if (!NEGATION_FILLERS.has(words[j]!)) return false;
+    }
+    return false;
+  });
+}
+
 /** How a calculation basis of a fee is stated (fixed / percentage / varies with amount or term). */
 const FEE_BASIS = /(?<!\p{L})(?:ثابت\p{L}*|مقطوع\p{L}*|نسبه|بنسبه|ت?يتغير|تتغير|(?:ت|ي)?(?:ختلف|زيد)\s+(?:ب)?حسب\s+(?:قيمه|المبلغ|مبلغ|المده|مده))(?!\p{L})/u;
 
@@ -99,7 +123,12 @@ export function validateMaterialEvidence(
       return spanCoversValue(value, span) ? null : unknown;
     case "price_fixed_at_contract":
       return spanHasStem(span, PRICE_FIXED_STEMS) ? null : unknown;
+    // An increase cannot be established from words that deny it; the field then stays unknown,
+    // so neither missing-information detection nor the evidence gate treats an increase as stated.
+    case "return_or_profit":
+      return negatesIncrease(`${value} ${span}`) ? unknown : null;
     case "increase_conditioned_at_contract":
+      if (field.value === true && negatesIncrease(span)) return unknown;
       return spanHasStem(span, CONDITIONED_STEMS) ? null : unknown;
     case "relationship_type": {
       const stems = value === "sale" ? SALE_STEMS : value === "loan" ? LOAN_STEMS : value === "murabaha" ? MURABAHA_STEMS : null;
