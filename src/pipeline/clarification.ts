@@ -175,17 +175,37 @@ function findOption(variant: QuestionVariant, reply: string): OptionTemplate | u
   return variant.options.find((o) => comparable(o.label) === r);
 }
 
-/** Applies the user's reply to the pending question and decides the next step. */
-export async function answerClarification(
+/** A fresh clarification state for a newly extracted transaction (nothing asked yet). */
+export function initialClarificationState(transaction: Transaction): ClarificationState {
+  return {
+    transaction: withOfficialMissingInformation(structuredClone(transaction)),
+    rounds_used: 0,
+    attempts: {},
+    unknown_by_user: [],
+    pending: null,
+    answers: [],
+  };
+}
+
+export type AppliedAnswer =
+  | { ok: true; state: ClarificationState; via: ClarificationAnswer["via"] }
+  | { ok: false; result: PipelineResult };
+
+/**
+ * Applies the user's reply to the pending question (merge only). The next
+ * step is decided by the caller — in production, by the evidence gate via
+ * stepAfterEvidence().
+ */
+export async function applyClarificationAnswer(
   state: ClarificationState,
   reply: string,
   provider: ModelProvider,
   options: { timeoutMs?: number } = {},
-): Promise<ClarificationStep> {
+): Promise<AppliedAnswer> {
   try {
     const pending = state.pending;
-    if (!pending) return { outcome: "failed", result: technicalErrorResult("clarification_no_pending_question") };
-    if (typeof reply !== "string" || reply.trim() === "") return { outcome: "failed", result: technicalErrorResult("clarification_empty_reply") };
+    if (!pending) return { ok: false, result: technicalErrorResult("clarification_no_pending_question") };
+    if (typeof reply !== "string" || reply.trim() === "") return { ok: false, result: technicalErrorResult("clarification_empty_reply") };
 
     const template = CLARIFICATION_TEMPLATES[pending.fact_id];
     const variant = variantFor(pending.fact_id, pending.attempt);
@@ -193,19 +213,16 @@ export async function answerClarification(
       fact_id: pending.fact_id, round: pending.round, question: pending.question, reply, via, resolved, corrections,
     });
 
-    let transaction = state.transaction;
-    let answer: ClarificationAnswer;
-
     if (isDontKnow(reply)) {
-      const next: ClarificationState = {
-        ...state,
-        pending: null,
-        unknown_by_user: [...state.unknown_by_user, pending.fact_id],
-        answers: [...state.answers, record("dont_know", false)],
+      return {
+        ok: true,
+        via: "dont_know",
+        state: { ...state, pending: null, unknown_by_user: [...state.unknown_by_user, pending.fact_id], answers: [...state.answers, record("dont_know", false)] },
       };
-      return nextStep(next);
     }
 
+    let transaction = state.transaction;
+    let answer: ClarificationAnswer;
     const chosen = findOption(variant, reply);
     if (chosen) {
       if (chosen.patch) {
@@ -215,13 +232,29 @@ export async function answerClarification(
       answer = record("option", chosen.patch !== null);
     } else {
       const read = await extractClarificationAnswer(pending.question, reply, template.targets, provider, options);
-      if (!read.ok) return { outcome: "failed", result: read.result };
+      if (!read.ok) return { ok: false, result: read.result };
       transaction = mergeTargets(transaction, read.fields);
       const stillMissing = detectMissingInformation(transaction).missingFacts.some((f) => f.id === pending.fact_id);
       answer = record("free_text", !stillMissing, read.corrections);
     }
+    const merged = withOfficialMissingInformation(transaction);
+    return { ok: true, via: answer.via, state: { ...state, transaction: merged, pending: null, answers: [...state.answers, answer] } };
+  } catch {
+    return { ok: false, result: technicalErrorResult("clarification_failed") };
+  }
+}
 
-    return nextStep({ ...state, transaction, pending: null, answers: [...state.answers, answer] });
+/** Applies the reply, then picks the next question from missing-information detection (used without an evidence gate). */
+export async function answerClarification(
+  state: ClarificationState,
+  reply: string,
+  provider: ModelProvider,
+  options: { timeoutMs?: number } = {},
+): Promise<ClarificationStep> {
+  const applied = await applyClarificationAnswer(state, reply, provider, options);
+  if (!applied.ok) return { outcome: "failed", result: applied.result };
+  try {
+    return nextStep(applied.state);
   } catch {
     return { outcome: "failed", result: technicalErrorResult("clarification_failed") };
   }

@@ -9,10 +9,13 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run src/pipeline/orchestrator.test.ts src/app/api/miyar/route.test.ts",
+    "test:real": "vitest run --config vitest.real.config.mts",
     "test:watch": "vitest"
   },
   "dependencies": {
     "next": "16.3.8",
+    "openai": "7.28.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "4.6.5"

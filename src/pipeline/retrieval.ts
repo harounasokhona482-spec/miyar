@@ -135,6 +135,8 @@ export type QueryTerm = { term: string; weight: number; from: "user_text" | "exp
 export type RetrievalInput = {
   /** The user's own words relevant to the context: first message and free-text replies. */
   userTexts: readonly string[];
+  /** Already-tokenized user terms from earlier turns (carried in the state token instead of raw text). */
+  priorTerms?: readonly string[];
   /** Structured transaction, if extracted. */
   transaction?: Transaction;
 };
@@ -149,6 +151,10 @@ export function buildRetrievalQuery(input: RetrievalInput, config: RetrievalConf
   };
 
   for (const text of input.userTexts) add(text, config.queryWeights.userText, "user_text");
+  for (const term of input.priorTerms ?? []) {
+    const existing = terms.get(term);
+    if (!existing || existing.weight < config.queryWeights.userText) terms.set(term, { term, weight: config.queryWeights.userText, from: "user_text" });
+  }
 
   const t = input.transaction;
   if (t) {

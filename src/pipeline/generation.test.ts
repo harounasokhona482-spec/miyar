@@ -9,7 +9,7 @@ import type { EvidenceResult } from "./evidence";
 import { generateAnswer, type GenerationOutcome } from "./generation";
 import type { GenerationOutput } from "./generationSchema";
 import { canned, caseOf, conversation, environmentFor, evaluate, firstTurn, productionKnowledge, replyProvider } from "./testdata/benchmarkHarness";
-import { GENERATION_RESPONSES, registryClaim } from "./testdata/generationResponses";
+import { GENERATION_RESPONSES } from "./testdata/generationResponses";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -28,14 +28,10 @@ async function generate(
   evidence: EvidenceResult,
   output: unknown = GENERATION_RESPONSES[id],
   knowledge: Map<string, KnowledgeRecordV2> = productionKnowledge(),
-): Promise<GenerationOutcome & { provider: FakeProvider }> {
+): Promise<GenerationOutcome> {
   const env = environmentFor(caseOf(id));
   const provider = output === undefined ? neverCalled() : providerFor(output);
-  const outcome = await generateAnswer(
-    { evidence, transaction: canned(id), knowledge, environment: env.kind, positions: env.positions },
-    provider,
-  );
-  return { ...outcome, provider };
+  return generateAnswer({ evidence, transaction: canned(id), knowledge, environment: env.kind, positions: env.positions }, provider);
 }
 
 function grounded(result: PipelineResult) {
@@ -63,9 +59,8 @@ async function expectRejected(id: string, output: GenerationOutput, check: strin
 // ---------------------------------------------------------------------------
 
 describe("grounded answers", () => {
-  it("T001: GROUNDED from KB-001 claims only, with KB metadata and verbatim quotes", async () => {
-    const { result } = await generate("T001", firstTurn("T001"));
-    const answer = grounded(result);
+  it("T001: GROUNDED from KB-001 claims; text, quotes and metadata all come from the knowledge base", async () => {
+    const answer = grounded((await generate("T001", firstTurn("T001"))).result);
     expect(answer).toMatchObject({ status: "grounded", answer_scope: "general_information", support_mode: "direct" });
     expect(answer.claims.map((c) => c.claim_ref)).toEqual(["KB-001-C01", "KB-001-C02"]);
     const kb001 = productionKnowledge().get("KB-001")!;
@@ -78,13 +73,16 @@ describe("grounded answers", () => {
         verified_excerpt: { text: kb001.verified_excerpt.text, location: kb001.verified_excerpt.page_or_location },
       },
     ]);
-    for (const c of answer.claims) expect(c.quote.text).toBe(findRegisteredClaim(kb001, c.claim_ref)!.supporting_text);
+    for (const c of answer.claims) {
+      const registered = findRegisteredClaim(kb001, c.claim_ref)!;
+      expect(c.text).toBe(registered.text);
+      expect(c.quote).toEqual({ text: registered.supporting_text, location: registered.location });
+    }
   });
 
   it("T001: KB-002 may be added for an independent definition claim", async () => {
-    const output = edited("T001", (o) => o.claims.push(registryClaim("KB-002-C03")));
-    const answer = grounded((await generate("T001", firstTurn("T001"), output)).result);
-    expect(answer.claims.map((c) => c.claim_ref)).toContain("KB-002-C03");
+    const output = edited("T001", (o) => o.selected_claim_refs.push("KB-002-C03"));
+    expect(grounded((await generate("T001", firstTurn("T001"), output)).result).claims.map((c) => c.claim_ref)).toContain("KB-002-C03");
   });
 
   it("T002: GROUNDED from KB-002", async () => {
@@ -97,10 +95,9 @@ describe("grounded answers", () => {
     expect(answer).toMatchObject({ answer_scope: "conditional_general_information", support_mode: "conditional" });
     expect(answer.claims.every((c) => c.source_id === "KB-003")).toBe(true);
     expect(answer.limitations).toEqual(expect.arrayContaining(["شرط لم نتحقق منه: وجود بيع بالتقسيط", "شرط لم نتحقق منه: المدين رضي بالشرط عند التعاقد"]));
-    expect(`${answer.understanding} ${answer.next_step}`).not.toMatch(/جائز|يجوز|صحيح/);
   });
 
-  it("T004: GROUNDED structural only from KB-004", async () => {
+  it("T004: GROUNDED structural only from KB-004; only KB-004 claims are offered to the model", async () => {
     const outcome = await generate("T004", firstTurn("T004"));
     const answer = grounded(outcome.result);
     expect(answer.answer_scope).toBe("structural_general_information");
@@ -140,8 +137,7 @@ describe("grounded answers", () => {
 
 describe("no answer without sufficient evidence (the model is never called)", () => {
   it.each(["T013", "T014"])("%s → INSUFFICIENT_EVIDENCE", async (id) => {
-    const outcome = await generate(id, firstTurn(id), undefined);
-    expect(outcome.result).toMatchObject({ state: "INSUFFICIENT_EVIDENCE", insufficient_reason: "no_supporting_source" });
+    expect((await generate(id, firstTurn(id), undefined)).result).toMatchObject({ state: "INSUFFICIENT_EVIDENCE", insufficient_reason: "no_supporting_source" });
   });
 
   it("T008 after clarification → INSUFFICIENT_EVIDENCE", async () => {
@@ -173,17 +169,15 @@ describe("no answer without sufficient evidence (the model is never called)", ()
 
 describe("DISPUTED (T016)", () => {
   it("lists both fixture positions in a fixed order, with no preference and no model", async () => {
-    const outcome = await generate("T016", firstTurn("T016"), undefined);
-    const r = PipelineResultSchema.parse(outcome.result);
+    const r = PipelineResultSchema.parse((await generate("T016", firstTurn("T016"), undefined)).result);
     if (r.state !== "DISPUTED") throw new Error(r.state);
     expect(r.positions.map((p) => p.position_id)).toEqual(["FIXTURE-POS-A", "FIXTURE-POS-B"]);
     expect(JSON.stringify(r)).not.toMatch(/الراجح|الأرجح|نرجح|الصحيح هو|الأقوى/);
   });
 
   it("is refused outside a fixture-only environment", async () => {
-    const evidence = firstTurn("T016");
     const outcome = await generateAnswer(
-      { evidence, transaction: canned("T016"), knowledge: productionKnowledge(), environment: "production_plus_fixture", positions: environmentFor(caseOf("T016")).positions },
+      { evidence: firstTurn("T016"), transaction: canned("T016"), knowledge: productionKnowledge(), environment: "production_plus_fixture", positions: environmentFor(caseOf("T016")).positions },
       neverCalled(),
     );
     expect(outcome.result.state).toBe("INSUFFICIENT_EVIDENCE");
@@ -202,16 +196,16 @@ describe("benchmark states", () => {
 // ---------------------------------------------------------------------------
 
 describe("citation verification rejects", () => {
-  it("an invented source_id", async () => {
-    await expectRejected("T001", edited("T001", (o) => (o.claims[0]!.source_id = "KB-099")), "unknown_source");
+  it("an invented source", async () => {
+    await expectRejected("T001", edited("T001", (o) => (o.selected_claim_refs[0] = "KB-099-C01")), "unknown_source");
   });
 
   it("an invented claim_ref", async () => {
-    await expectRejected("T001", edited("T001", (o) => (o.claims[0]!.claim_ref = "KB-001-C09")), "unknown_claim");
+    await expectRejected("T001", edited("T001", (o) => (o.selected_claim_refs[0] = "KB-001-C09")), "unknown_claim");
   });
 
-  it("a claim_ref from another source", async () => {
-    await expectRejected("T001", edited("T001", (o) => (o.claims[0]!.claim_ref = "KB-002-C01")), "claim_not_in_source");
+  it("a malformed reference", async () => {
+    await expectRejected("T001", edited("T001", (o) => o.selected_claim_refs.push("تقرر المادة جواز ذلك")), "malformed_claim_ref");
   });
 
   it("an unverified source", async () => {
@@ -227,8 +221,8 @@ describe("citation verification rejects", () => {
   });
 
   it("a retrieved source that is not supporting (KB-006 in T001; KB-001 in T005)", async () => {
-    await expectRejected("T001", edited("T001", (o) => o.claims.push(registryClaim("KB-006-C01"))), "source_not_supporting");
-    await expectRejected("T005", edited("T005", (o) => o.claims.push(registryClaim("KB-001-C01"))), "source_not_supporting");
+    await expectRejected("T001", edited("T001", (o) => o.selected_claim_refs.push("KB-006-C01")), "source_not_supporting");
+    await expectRejected("T005", edited("T005", (o) => o.selected_claim_refs.push("KB-001-C01")), "source_not_supporting");
   });
 
   it("a claim outside the structural scope", async () => {
@@ -237,31 +231,27 @@ describe("citation verification rejects", () => {
     await expectRejected("T004", GENERATION_RESPONSES.T004!, "claim_exceeds_structural_scope", k);
   });
 
-  it("a quote that does not exist", async () => {
-    await expectRejected("T001", edited("T001", (o) => (o.claims[0]!.quote = "يجوز البيع بأي ثمن دون قيد")), "quote_not_in_record");
+  it("an unsupported claim (status not supported)", async () => {
+    const k = productionKnowledge();
+    k.get("KB-001")!.claims_check[0]!.status = "partially_supported";
+    await expectRejected("T001", GENERATION_RESPONSES.T001!, "unknown_claim", k);
   });
 
-  it("a real quote taken from another record", async () => {
-    const other = productionKnowledge().get("KB-002")!.verified_excerpt.text;
-    await expectRejected("T001", edited("T001", (o) => (o.claims[0]!.quote = other)), "quote_from_another_record");
+  it("a fixture reference in production_plus_fixture (T019 poisoned source)", async () => {
+    await expectRejected("T019", edited("T019", (o) => o.selected_claim_refs.push("FIXTURE-INJ-001-C01")), "fixture_not_citable");
   });
 
-  it("a fixture cited in production_plus_fixture (T019 poisoned source)", async () => {
-    const output = edited("T019", (o) => o.claims.push({ text: "أي نص", source_id: "FIXTURE-INJ-001", claim_ref: "KB-002-C01" }));
-    await expectRejected("T019", output, "fixture_not_citable");
+  it("an empty selection", async () => {
+    await expectRejected("T001", edited("T001", (o) => (o.selected_claim_refs = [])), "no_claims");
   });
 
-  it("a claim with no reference", async () => {
-    await expectRejected("T001", edited("T001", (o) => o.claims.push({ text: "البيع بالتقسيط جائز مطلقًا.", source_id: "KB-001" })), "claim_without_reference");
-  });
-
-  it("a claim whose text was altered", async () => {
-    await expectRejected("T001", edited("T001", (o) => (o.claims[0]!.text = "تقرر المادة جواز كل زيادة في الثمن.")), "claim_text_altered");
+  it("a duplicate claim", async () => {
+    await expectRejected("T001", edited("T001", (o) => o.selected_claim_refs.push("KB-001-C01")), "duplicate_claim");
   });
 
   it("a claim that the answer was reviewed by a scholar", async () => {
     await expectRejected("T001", edited("T001", (o) => (o.next_step = "هذه الإجابة راجعها عالم متخصص.")), "claims_scholarly_review");
-    await expectRejected("T001", edited("T001", (o) => o.limitations.push("المحتوى معتمد من مختص.")), "claims_scholarly_review");
+    await expectRejected("T001", edited("T001", (o) => (o.understanding = "المحتوى معتمد من مختص.")), "claims_scholarly_review");
   });
 
   it("conditional support turned into a decisive ruling on the user's case (T003)", async () => {
@@ -282,13 +272,27 @@ describe("citation verification rejects", () => {
   });
 
   it("an answer that does not cite a required supporting source", async () => {
-    await expectRejected("T001", edited("T001", (o) => (o.claims = [registryClaim("KB-002-C03")])), "missing_required_support");
+    await expectRejected("T001", edited("T001", (o) => (o.selected_claim_refs = ["KB-002-C03"])), "missing_required_support");
   });
 
   it("never shows part of a failed answer", async () => {
-    const outcome = await generate("T001", firstTurn("T001"), edited("T001", (o) => o.claims.push(registryClaim("KB-006-C01"))));
+    const outcome = await generate("T001", firstTurn("T001"), edited("T001", (o) => o.selected_claim_refs.push("KB-006-C01")));
     expect(outcome.result.state).toBe("INSUFFICIENT_EVIDENCE");
     expect(JSON.stringify(outcome.result)).not.toContain("KB-001-C01");
+  });
+});
+
+describe("the model cannot supply claim text, quotes or source metadata", () => {
+  it.each([
+    ["claim text", { claims: [{ text: "تقرر المادة جواز كل زيادة", source_id: "KB-001", claim_ref: "KB-001-C01" }] }],
+    ["a quote", { quote: "يجوز ذلك مطلقًا" }],
+    ["a source title", { source_title: "مرجع مختلق" }],
+    ["a source URL", { source_url: "https://example.com" }],
+    ["a source location", { source_location: "الهامش (9)" }],
+    ["a response state", { state: "GROUNDED" }],
+  ])("rejects %s (schema violation, fail closed)", async (_label, extra) => {
+    const outcome = await generate("T001", firstTurn("T001"), { ...GENERATION_RESPONSES.T001, ...extra });
+    expect(outcome.result).toMatchObject({ state: "TECHNICAL_ERROR", message: TECHNICAL_ERROR_MESSAGE, error_code: "generation_schema_violation" });
   });
 });
 
@@ -305,12 +309,5 @@ describe("technical failures fail closed", () => {
 
   it("invalid JSON → TECHNICAL_ERROR", async () => {
     expect((await generate("T001", firstTurn("T001"), "{not json")).result).toMatchObject({ state: "TECHNICAL_ERROR", error_code: "generation_invalid_json" });
-  });
-
-  it("extra fields such as source metadata or a state → TECHNICAL_ERROR", async () => {
-    for (const extra of [{ state: "GROUNDED" }, { source_url: "https://example.com" }]) {
-      const output = { ...GENERATION_RESPONSES.T001, ...extra };
-      expect((await generate("T001", firstTurn("T001"), output)).result).toMatchObject({ state: "TECHNICAL_ERROR", error_code: "generation_schema_violation" });
-    }
   });
 });

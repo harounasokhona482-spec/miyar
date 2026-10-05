@@ -26,7 +26,8 @@ import { technicalErrorResult } from "./results";
  * closed to TECHNICAL_ERROR.
  */
 
-export const EXTRACTION_TIMEOUT_MS = 20_000;
+/** Outer stage timeout: covers one provider attempt plus its single retry. */
+export const EXTRACTION_TIMEOUT_MS = 45_000;
 
 /** Top level is strict: no extra keys such as "ruling", "state" or "citations". */
 const ExtractionOutputSchema = z.strictObject(TransactionSchema.shape);

@@ -1,24 +1,14 @@
-import kbV2 from "../../../knowledge_base_v2.json";
 import type { GenerationOutput } from "../generationSchema";
 
 /**
- * Canned outputs of a well-behaved generation model (tests only). Claim text
- * is copied from the knowledge base registry by claim_ref, as the model is
- * instructed to do.
+ * Canned outputs of a well-behaved generation model (tests only): claim
+ * references plus framing text. Claim text, quotes and metadata are added by
+ * the system from the registry.
  */
 
-export function registryClaim(claimRef: string): { text: string; source_id: string; claim_ref: string } {
-  const sourceId = claimRef.slice(0, 6);
-  const record = kbV2.records.find((r) => r.source_id === sourceId);
-  const claim = record?.claims_check.find((c) => c.claim_id === claimRef);
-  if (!claim) throw new Error(`no registered claim ${claimRef}`);
-  return { text: claim.claim, source_id: sourceId, claim_ref: claimRef };
-}
-
-const out = (understanding: string, refs: string[], next_step: string, limitations: string[] = []): GenerationOutput => ({
+const out = (understanding: string, selected_claim_refs: string[], next_step: string): GenerationOutput => ({
+  selected_claim_refs,
   understanding,
-  claims: refs.map(registryClaim),
-  limitations,
   next_step,
 });
 
@@ -58,4 +48,13 @@ export const GENERATION_RESPONSES: Readonly<Record<string, GenerationOutput>> = 
     ["KB-004-C01", "KB-004-C02", "KB-004-C03"],
     "لمعرفة ما يترتب على صورة الوعد في عقدك، اعرض العقد على مختص.",
   ),
+};
+
+/** Canned selection by the supporting source (used by the end-to-end fake provider). */
+export const GENERATION_BY_SUPPORTING_SOURCE: Readonly<Record<string, GenerationOutput>> = {
+  "KB-001": GENERATION_RESPONSES.T001!,
+  "KB-002": GENERATION_RESPONSES.T019!,
+  "KB-003": GENERATION_RESPONSES.T003!,
+  "KB-004": GENERATION_RESPONSES.T021!,
+  "KB-005": GENERATION_RESPONSES.T005!,
 };

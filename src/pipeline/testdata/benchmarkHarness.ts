@@ -109,7 +109,7 @@ export const firstTurn = (id: string) => evaluate(caseOf(id), canned(id), [caseO
 
 /** Free-text clarification replies answered by a fake model (only the targeted fields). */
 const E = <V>(value: V, evidence_span: string) => ({ value, provenance: "explicit" as const, evidence_span });
-const REPLIES: Record<string, object> = {
+export const CLARIFICATION_REPLIES: Record<string, object> = {
   [caseOf("T021").turns[1]!.user_message]: {
     ownership_transfer: E("البنك يشتري السيارة ويتملكها قبل بيعها", "البنك يشتري السيارة من المعرض ويتملكها أولًا"),
   },
@@ -119,7 +119,7 @@ const REPLIES: Record<string, object> = {
   ...Object.fromEntries(caseOf("T023").turns.slice(1).map((t) => [t.user_message, { ownership_transfer: { value: null, provenance: "unknown" } }])),
 };
 export const replyProvider = new FakeProvider((request) => {
-  const response = REPLIES[userMessageOf(request)];
+  const response = CLARIFICATION_REPLIES[userMessageOf(request)];
   if (!response) throw new Error("no canned clarification response");
   return JSON.stringify(response);
 });
