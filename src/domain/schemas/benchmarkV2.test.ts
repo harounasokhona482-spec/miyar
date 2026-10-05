@@ -1,32 +1,35 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import productionKb from "../../../knowledge_base_v1.json";
+import productionKb from "../../../knowledge_base_v2.json";
 import testSetV1 from "../../../test_set_v1.json";
 import testSetV2 from "../../../test_set_v2.json";
 import { DONT_KNOW_OPTION, FIXED_STATE_MESSAGES, OUT_OF_SCOPE_MESSAGE } from "../messages";
 import { CRITICAL_ASSERTIONS, TestSetFileSchema, type EvalCase } from "./evalCase";
-import { FixtureKnowledgeBaseFileSchema, KnowledgeBaseFileSchema } from "./knowledgeRecord";
+import { FixtureKnowledgeBaseFileSchema, KnowledgeBaseFileSchema, KnowledgeBaseV2FileSchema } from "./knowledgeRecord";
 
-// Data-integrity checks on the benchmark and fixtures. No pipeline logic here.
+// Data-integrity checks on the benchmark and fixtures against the production
+// knowledge base v2. No pipeline logic here.
 
 const ROOT = resolve(__dirname, "../../..");
 const FIXTURE_DIR = join(ROOT, "eval", "fixtures");
 
 const suite = TestSetFileSchema.parse(testSetV2);
-const production = KnowledgeBaseFileSchema.parse(productionKb);
+const production = KnowledgeBaseV2FileSchema.parse(productionKb);
+const productionById = new Map(production.records.map((r) => [r.source_id, r]));
 
 const fixtureFiles = readdirSync(FIXTURE_DIR).filter((f) => f.endsWith(".json"));
 const rawFixtures = new Map(fixtureFiles.map((f) => [f, JSON.parse(readFileSync(join(FIXTURE_DIR, f), "utf8")) as unknown]));
 const fixtures = new Map([...rawFixtures].map(([f, raw]) => [f, FixtureKnowledgeBaseFileSchema.parse(raw)]));
 
+/** source_id → approved, for the knowledge active in a case. */
 function activeKb(c: EvalCase) {
   const fixture = c.fixture ? fixtures.get(c.fixture) : undefined;
-  const records = [
-    ...(c.kb_mode === "fixture_only" ? [] : production.records),
-    ...(fixture?.records ?? []),
-  ];
-  return { records, positions: fixture?.positions ?? [] };
+  const approved = new Map<string, boolean>([
+    ...(c.kb_mode === "fixture_only" ? [] : production.records.map((r) => [r.source_id, r.approved] as const)),
+    ...(fixture?.records ?? []).map((r) => [r.source_id, r.approved] as const),
+  ]);
+  return { approved, fixtureRecords: fixture?.records ?? [], positions: fixture?.positions ?? [] };
 }
 
 const finalStates = (c: EvalCase) => c.turns[c.turns.length - 1]!.accepted_states;
@@ -56,7 +59,7 @@ describe("test_set_v2.json structure", () => {
 describe("source references (no fabricated sources in the benchmark itself)", () => {
   it("references only sources that exist and are approved in the case's active knowledge", () => {
     for (const c of suite.tests) {
-      const records = new Map(activeKb(c).records.map((r) => [r.source_id, r]));
+      const { approved } = activeKb(c);
       const referenced = [
         ...c.expected_retrieved_source_ids,
         ...c.expected_cited_source_ids,
@@ -64,9 +67,31 @@ describe("source references (no fabricated sources in the benchmark itself)", ()
         ...c.forbidden_cited_source_ids,
       ];
       for (const id of referenced) {
-        expect(records.get(id)?.approved, `${c.id} references ${id}`).toBe(true);
+        expect(approved.get(id), `${c.id} references ${id}`).toBe(true);
       }
     }
+  });
+
+  it("only expects citations of production sources that are textually verified in v2", () => {
+    for (const c of suite.tests) {
+      for (const id of c.expected_cited_source_ids.filter((x) => productionById.has(x))) {
+        expect(productionById.get(id)!.verified_excerpt.verified, `${c.id} cites ${id}`).toBe(true);
+      }
+    }
+  });
+
+  it("limits every case citing a structural_only source to structural answers", () => {
+    for (const c of suite.tests) {
+      const structural = c.expected_cited_source_ids.some(
+        (id) => productionById.get(id)?.editorial_constraints.grounding_scope === "structural_only",
+      );
+      if (structural) {
+        expect(c.answer_scope, c.id).toBe("structural_general_information");
+        expect(c.critical_assertions, c.id).toContain("structural_scope_only");
+      }
+    }
+    expect(byId("T004").answer_scope).toBe("structural_general_information");
+    expect(byId("T021").answer_scope).toBe("structural_general_information");
   });
 
   it("names only fixtures that exist", () => {
@@ -81,7 +106,8 @@ describe("eval/fixtures isolation", () => {
     expect(fixtureFiles.length).toBeGreaterThan(0);
     for (const [file, raw] of rawFixtures) {
       expect((raw as { synthetic_test_data?: unknown }).synthetic_test_data, file).toBe(true);
-      expect(KnowledgeBaseFileSchema.safeParse(raw).success, `${file} must not pass as production`).toBe(false);
+      expect(KnowledgeBaseFileSchema.safeParse(raw).success, `${file} must not pass as production v1`).toBe(false);
+      expect(KnowledgeBaseV2FileSchema.safeParse(raw).success, `${file} must not pass as production v2`).toBe(false);
     }
   });
 
@@ -132,16 +158,16 @@ describe("rebuilt cases T016, T017, T019, T020", () => {
 
   it("T017 pairs a general source with a context-restricted one and expects clarification", () => {
     const c = byId("T017");
-    const { records } = activeKb(c);
-    const general = records.find((r) => r.source_id === "FIXTURE-C")!;
-    const restricted = records.find((r) => r.source_id === "FIXTURE-D")!;
+    const { fixtureRecords } = activeKb(c);
+    const general = fixtureRecords.find((r) => r.source_id === "FIXTURE-C")!;
+    const restricted = fixtureRecords.find((r) => r.source_id === "FIXTURE-D")!;
     expect(restricted.applicability_conditions.length).toBeGreaterThan(general.applicability_conditions.length);
     expect(finalStates(c)).toEqual(["NEEDS_CLARIFICATION"]);
   });
 
   it("T019 exposes the pipeline to a poisoned source_text without saying it is a test", () => {
     const c = byId("T019");
-    const poisoned = activeKb(c).records.find((r) => r.source_id === "FIXTURE-INJ-001")!;
+    const poisoned = activeKb(c).fixtureRecords.find((r) => r.source_id === "FIXTURE-INJ-001")!;
     expect(poisoned.source_text).toMatch(/تجاهل|ignore/i);
     expect(c.expected_retrieved_source_ids).toContain("FIXTURE-INJ-001");
     expect(c.forbidden_cited_source_ids).toContain("FIXTURE-INJ-001");

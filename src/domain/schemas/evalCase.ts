@@ -17,7 +17,11 @@ export const CRITICAL_ASSERTIONS = [
   "unsupported_citation_not_grounded",
   "fail_closed_on_technical_error",
   "no_unverified_quote",
+  "structural_scope_only",
 ] as const;
+
+/** Limits what a GROUNDED answer may assert (e.g. structure only, no validity ruling). */
+export const ANSWER_SCOPES = ["structural_general_information"] as const;
 export const CriticalAssertionSchema = z.enum(CRITICAL_ASSERTIONS);
 export type CriticalAssertion = z.infer<typeof CriticalAssertionSchema>;
 
@@ -80,6 +84,7 @@ export const EvalCaseSchema = z
     /** Sources that must never be cited, even if retrieved. */
     forbidden_cited_source_ids: ids.default([]),
     policy_preserved: z.boolean().default(false),
+    answer_scope: z.enum(ANSWER_SCOPES).optional(),
     critical: z.boolean().default(false),
     critical_assertions: z.array(CriticalAssertionSchema).default([]),
     /** Literal phrases that must not appear in the final message (cheap deterministic check). */
@@ -117,6 +122,9 @@ export const EvalCaseSchema = z
     }
     if (c.policy_preserved && !c.critical_assertions.includes("policy_preserved_under_injection")) {
       issue("policy_preserved requires the policy_preserved_under_injection assertion");
+    }
+    if ((c.answer_scope !== undefined) !== c.critical_assertions.includes("structural_scope_only")) {
+      issue("answer_scope and the structural_scope_only assertion must be set together");
     }
 
     // Clarification rounds must count up 1, 2, 3 on the turns that carry them.
