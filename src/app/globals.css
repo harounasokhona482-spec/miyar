@@ -1,19 +1,115 @@
 @import "tailwindcss";
 
-/* Light theme only in the MVP (no dark mode). */
+/*
+ * Mi'yar design system (Claude Design "Miyar UX Wireframes", §5): warm paper,
+ * dark blue ink, copper for citations. Status colors share lightness and
+ * chroma and differ in hue only, so no state reads as an alarm; every state
+ * also has its own shape. Light theme only in the MVP.
+ */
+
+@theme inline {
+  --font-display: var(--nf-display), "Segoe UI", Tahoma, sans-serif;
+  --font-body: var(--nf-body), "Segoe UI", Tahoma, sans-serif;
+  --font-quote: var(--nf-quote), "Traditional Arabic", "Times New Roman", serif;
+}
+
+@theme {
+  --color-ink: oklch(0.27 0.03 240);
+  --color-ink-soft: oklch(0.38 0.02 240);
+  --color-muted: oklch(0.5 0.015 240);
+  --color-faint: oklch(0.6 0.01 240);
+  --color-primary: oklch(0.42 0.07 235);
+  --color-primary-hover: oklch(0.36 0.07 235);
+  --color-cite: oklch(0.5 0.08 65);
+  --color-cite-tint: oklch(0.97 0.012 70);
+  --color-paper: oklch(0.985 0.005 85);
+  --color-surface: oklch(0.96 0.008 85);
+  --color-line: oklch(0.89 0.01 85);
+  --color-control: oklch(0.6 0.012 240);
+  --color-focus: oklch(0.94 0.03 235);
+  --color-selected: oklch(0.97 0.015 235);
+  --color-disabled: oklch(0.93 0.008 85);
+
+  --color-grounded: oklch(0.48 0.06 165);
+  --color-grounded-tint: oklch(0.96 0.025 165);
+  --color-grounded-text: oklch(0.38 0.06 165);
+  --color-disputed: oklch(0.48 0.06 290);
+  --color-disputed-tint: oklch(0.96 0.025 290);
+  --color-disputed-text: oklch(0.38 0.06 290);
+  --color-missing: oklch(0.48 0.06 75);
+  --color-missing-tint: oklch(0.96 0.025 75);
+  --color-missing-text: oklch(0.38 0.06 75);
+  --color-referral: oklch(0.48 0.06 235);
+  --color-referral-tint: oklch(0.96 0.025 235);
+  --color-referral-text: oklch(0.36 0.06 235);
+  --color-insufficient: oklch(0.48 0.015 240);
+  --color-insufficient-tint: oklch(0.96 0.006 240);
+  --color-insufficient-text: oklch(0.36 0.015 240);
+}
+
 :root {
   color-scheme: light;
-  --background: #fafaf9;
-  --foreground: #1c1917;
 }
 
 html {
   direction: rtl;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: "Segoe UI", Tahoma, "Noto Naskh Arabic", "Noto Sans Arabic", sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
   line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+/* A clear, consistent focus ring for keyboard users. */
+:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Headings that receive focus on screen changes are not interactive. */
+[data-screen-title]:focus {
+  outline: none;
+}
+
+@keyframes miyar-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+}
+
+.miyar-pulse {
+  animation: miyar-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes miyar-flash {
+  from {
+    box-shadow: 0 0 0 4px var(--color-focus);
+  }
+  to {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.miyar-flash {
+  animation: miyar-flash 1.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }
