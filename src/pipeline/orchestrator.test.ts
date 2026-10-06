@@ -180,6 +180,45 @@ describe("end-to-end with the fake provider", () => {
   });
 });
 
+describe("display-only clarification fields (additive contract)", () => {
+  const OWNERSHIP_REASON = "لا يُعرف هل تشتري الجهة الممولة السلعة وتملكها قبل بيعها للمستخدم.";
+  const FEE_REASON = "توجد رسوم، ولا يُعرف كيف تُحسب: مبلغ ثابت مقابل خدمة أم تتغير بقيمة التمويل أو مدته.";
+
+  it("T009: inferred labels are listed apart from stated facts, with why and what is still unclear", async () => {
+    const q = expectState((await ask({ message: first("T009") }, deps(e2eProvider()))).response, "NEEDS_CLARIFICATION");
+    expect(q.inferred).toEqual([
+      { label: "نوع المعاملة المحتمل", value: "مرابحة محتملة" },
+      { label: "طبيعة العلاقة المحتملة", value: "مرابحة" },
+    ]);
+    // Stated facts stay explicit-only, as before.
+    expect(q.understanding.map((u) => u.label)).not.toContain("نوع المعاملة المحتمل");
+    expect(q.clarification.why).toBe(OWNERSHIP_REASON);
+    expect(q.unclear).toEqual([OWNERSHIP_REASON]);
+  });
+
+  it("T006: the fee question explains itself; every open material fact is listed once", async () => {
+    const q = expectState((await ask({ message: first("T006") }, deps(e2eProvider()))).response, "NEEDS_CLARIFICATION");
+    expect(q.clarification.why).toBe(FEE_REASON);
+    expect(q.unclear).toContain(FEE_REASON);
+    expect(new Set(q.unclear).size).toBe(q.unclear!.length);
+  });
+
+  it("an inferred label that is an internal code (seen from the real model) is not shown", async () => {
+    const t = structuredClone(EXTRACTION_RESPONSES.T009!);
+    t.possible_classification = { value: "murabaha_purchase_orderer", provenance: "inferred" };
+    const d = deps(e2eProvider({ transaction_extraction: () => JSON.stringify(t) }));
+    const q = expectState((await ask({ message: first("T009") }, d)).response, "NEEDS_CLARIFICATION");
+    expect(q.inferred).toEqual([{ label: "طبيعة العلاقة المحتملة", value: "مرابحة" }]);
+  });
+
+  it("the display fields never carry the state token", async () => {
+    const q = expectState((await ask({ message: first("T009") }, deps(e2eProvider()))).response, "NEEDS_CLARIFICATION");
+    const display = JSON.stringify({ understanding: q.understanding, inferred: q.inferred, unclear: q.unclear, clarification: q.clarification, message: q.message });
+    expect(display).not.toContain(q.state_token);
+    expect(display).not.toContain(q.state_token.split(".")[1]!);
+  });
+});
+
 describe("model output quirks seen in real runs", () => {
   it("T009 with relationship_type {value: «unknown»} still asks the ownership question (no TECHNICAL_ERROR)", async () => {
     const t = structuredClone(EXTRACTION_RESPONSES.T009!);

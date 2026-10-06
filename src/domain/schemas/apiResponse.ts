@@ -26,12 +26,18 @@ export const ApiResponseSchema = z.discriminatedUnion("state", [
     ...common,
     state: z.literal("NEEDS_CLARIFICATION"),
     understanding: z.array(z.strictObject({ label: text, value: text })),
+    /** Display only: analytical labels the system inferred (never treated as facts). */
+    inferred: z.array(z.strictObject({ label: text, value: text })).optional(),
+    /** Display only: the material facts still unclear, as fixed explanations. */
+    unclear: z.array(text).optional(),
     clarification: z.strictObject({
       question: text,
       options: z.array(text).min(1),
       round: z.number().int().min(1),
       max_rounds: z.number().int().min(1),
       allow_free_text: z.boolean(),
+      /** Display only: why this question is asked (the fact's fixed explanation). */
+      why: text.optional(),
     }),
     state_token: text,
   }),

@@ -39,3 +39,24 @@ export function understandingSummary(t: Transaction): { label: string; value: st
     return value ? [{ label, value }] : [];
   });
 }
+
+const INFERRED_LABELS: Record<string, string> = {
+  possible_classification: "نوع المعاملة المحتمل",
+  relationship_type: "طبيعة العلاقة المحتملة",
+};
+
+/** A label fit for the user: Arabic text, not an internal code such as «murabaha_purchase_orderer». */
+const READABLE = /\p{Script=Arabic}/u;
+
+/**
+ * Display only: the analytical labels the extractor inferred (never facts), so
+ * the screen can show them apart from what the user stated.
+ */
+export function inferredSummary(t: Transaction): { label: string; value: string }[] {
+  return (["possible_classification", "relationship_type"] as const).flatMap((path) => {
+    const field = t[path];
+    if (field.provenance !== "inferred" || field.value === null) return [];
+    const value = display(path, field.value);
+    return value && READABLE.test(value) ? [{ label: INFERRED_LABELS[path]!, value }] : [];
+  });
+}

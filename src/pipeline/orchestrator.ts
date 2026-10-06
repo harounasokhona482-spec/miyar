@@ -11,11 +11,11 @@ import { applyClarificationAnswer, initialClarificationState, stepAfterEvidence,
 import { evaluateEvidence, evidenceRecordInfo } from "./evidence";
 import { extractTransaction } from "./extraction";
 import { generateAnswer } from "./generation";
-import { detectMissingInformation } from "./missingInfo";
+import { detectMissingInformation, missingFactReason } from "./missingInfo";
 import { DEFAULT_RETRIEVAL_CONFIG, retrieveFromKnowledgeBase } from "./retrieval";
 import { insufficientEvidenceResult, technicalErrorResult } from "./results";
 import { runSafetyPreGate } from "./safetyPreGate";
-import { understandingSummary } from "./understanding";
+import { inferredSummary, understandingSummary } from "./understanding";
 
 /**
  * The one official path of the application:
@@ -182,13 +182,25 @@ export async function handleMiyarRequest(body: unknown, deps: OrchestratorDeps):
           now(),
         );
         if (!signed.ok) return fail(signed.error);
+        // Display only: what was inferred, what the evidence gate still needs, and why this question.
+        const unclear = [...new Set(evidence.askFacts.flatMap((f) => missingFactReason(f) ?? []))];
+        const why = missingFactReason(pending.fact_id);
         const response = ApiResponseSchema.parse({
           state: "NEEDS_CLARIFICATION",
           request_id: requestId,
           message: pending.question,
           disclaimer: PRODUCT_DISCLAIMER,
           understanding: understandingSummary(step.state.transaction),
-          clarification: { question: pending.question, options: pending.options, round: pending.round, max_rounds: MAX_CLARIFICATION_ROUNDS, allow_free_text: true },
+          inferred: inferredSummary(step.state.transaction),
+          unclear,
+          clarification: {
+            question: pending.question,
+            options: pending.options,
+            round: pending.round,
+            max_rounds: MAX_CLARIFICATION_ROUNDS,
+            allow_free_text: true,
+            ...(why ? { why } : {}),
+          },
           state_token: signed.token,
         });
         return finish(response);

@@ -113,6 +113,11 @@ const FACTS: Record<FactId, Omit<MissingFact, "id">> = {
   },
 };
 
+/** The fixed explanation of a material fact (shown to the user as «why we ask»), or null for an unknown id. */
+export function missingFactReason(id: string): string | null {
+  return (FACT_IDS as readonly string[]).includes(id) ? FACTS[id as FactId].reason : null;
+}
+
 type AnyField = { value: unknown; provenance: string; evidence_span?: string };
 
 function known(field: AnyField): boolean {
