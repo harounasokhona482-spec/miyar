@@ -1,0 +1,1851 @@
+{
+  "metrics": {
+    "rows": 25,
+    "finalDecisionAccuracy": {
+      "full_exact_state": "25/25 (100%)",
+      "full_answer_vs_not": "25/25 (100%)",
+      "baseline_answer_vs_not": "9/25 (36%)",
+      "baseline_answer_vs_not_and_valid_source": "8/25 (32%)",
+      "baseline_answer_vs_not_and_required_source": "7/25 (28%)"
+    },
+    "unsupportedAnswerRate": {
+      "baseline_of_all_rows": "17/25 (68%)",
+      "baseline_of_its_answers": "17/23 (74%)",
+      "full_of_all_rows": "0/25 (0%)",
+      "full_of_its_answers": "0/7 (0%)"
+    },
+    "correctAbstentionOrDeferral": {
+      "rows_not_allowing_grounded": 18,
+      "full_exact_state": "18/18 (100%)",
+      "full_did_not_answer": "18/18 (100%)",
+      "baseline_did_not_answer": "2/18 (11%)"
+    },
+    "supportingSourceAccuracy": {
+      "rows_allowing_grounded": 7,
+      "baseline_top_is_valid_support": "6/7 (86%)",
+      "baseline_top_is_required_source": "5/7 (71%)",
+      "full_supporting_within_allowed_and_required_cited": "7/7 (100%)"
+    },
+    "citationRisk": {
+      "baseline_answers": 23,
+      "top_forbidden_cited_source": 2,
+      "top_fixture_not_citable": 2,
+      "top_contextually_inapplicable": 3,
+      "top_retrieved_not_supporting": 18,
+      "top_any_risk": 18,
+      "full_cited_any_risk": 0,
+      "rows_with_risky_source_in_bm25_top3": 3,
+      "full_rows_citing_such_source": 0
+    },
+    "retrievalFollowingGenerator": {
+      "outputs_checked": 21,
+      "not_measured_fixture_only_rows": 2,
+      "rejected_with_evidence_gate": 16,
+      "rejected_by_citation_verification_alone": 2,
+      "at_risk_but_passing_citation_verification_alone": 14
+    }
+  },
+  "metricsFirstTurnOnly": {
+    "rows": 19,
+    "finalDecisionAccuracy": {
+      "full_exact_state": "19/19 (100%)",
+      "full_answer_vs_not": "19/19 (100%)",
+      "baseline_answer_vs_not": "8/19 (42%)",
+      "baseline_answer_vs_not_and_valid_source": "7/19 (37%)",
+      "baseline_answer_vs_not_and_required_source": "6/19 (32%)"
+    },
+    "unsupportedAnswerRate": {
+      "baseline_of_all_rows": "12/19 (63%)",
+      "baseline_of_its_answers": "12/17 (71%)",
+      "full_of_all_rows": "0/19 (0%)",
+      "full_of_its_answers": "0/6 (0%)"
+    },
+    "correctAbstentionOrDeferral": {
+      "rows_not_allowing_grounded": 13,
+      "full_exact_state": "13/13 (100%)",
+      "full_did_not_answer": "13/13 (100%)",
+      "baseline_did_not_answer": "2/13 (15%)"
+    },
+    "supportingSourceAccuracy": {
+      "rows_allowing_grounded": 6,
+      "baseline_top_is_valid_support": "5/6 (83%)",
+      "baseline_top_is_required_source": "4/6 (67%)",
+      "full_supporting_within_allowed_and_required_cited": "6/6 (100%)"
+    },
+    "citationRisk": {
+      "baseline_answers": 17,
+      "top_forbidden_cited_source": 1,
+      "top_fixture_not_citable": 1,
+      "top_contextually_inapplicable": 2,
+      "top_retrieved_not_supporting": 13,
+      "top_any_risk": 13,
+      "full_cited_any_risk": 0,
+      "rows_with_risky_source_in_bm25_top3": 2,
+      "full_rows_citing_such_source": 0
+    },
+    "retrievalFollowingGenerator": {
+      "outputs_checked": 15,
+      "not_measured_fixture_only_rows": 2,
+      "rejected_with_evidence_gate": 11,
+      "rejected_by_citation_verification_alone": 1,
+      "at_risk_but_passing_citation_verification_alone": 10
+    }
+  },
+  "thresholdSweep": {
+    "best_threshold": 12.765865,
+    "best_answer_vs_not": "21/25 (84%)",
+    "best_answer_vs_not_and_required_source": "21/25 (84%)",
+    "best_answerable_rows_answered_with_required_source": "3/7 (43%)",
+    "best_exact_state": "9/25 (36%)",
+    "full_exact_state": "25/25 (100%)",
+    "top_score_range_rows_allowing_grounded": [
+      4.989406,
+      13.378161
+    ],
+    "top_score_range_rows_not_allowing_grounded": [
+      0,
+      12.628015
+    ]
+  },
+  "rows": [
+    {
+      "label": "T001",
+      "caseId": "T001",
+      "category": "grounded_installment_sale",
+      "accepted": [
+        "GROUNDED"
+      ],
+      "allowsGrounded": true,
+      "allowedCited": [
+        "KB-001",
+        "KB-002"
+      ],
+      "required": [
+        "KB-001"
+      ],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-001",
+          "score": 12.765865,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-002",
+          "score": 3.955008,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-006",
+          "score": 2.055471,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 2.047062,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-005",
+          "score": 1.971917,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-001",
+        "validSupport": true,
+        "requiredSource": true,
+        "risks": []
+      },
+      "full": {
+        "evidenceStatus": "sufficient",
+        "state": "GROUNDED",
+        "supporting": [
+          "KB-001"
+        ],
+        "optional": [
+          "KB-002"
+        ],
+        "cited": [
+          "KB-001"
+        ],
+        "askFacts": [],
+        "reasons": [
+          "issue_covered: deferred_price_above_cash by KB-001 (direct, required)",
+          "issue_covered: installment_sale by KB-002 (direct, optional)"
+        ],
+        "topExclusion": [],
+        "groundingScope": "general",
+        "supportMode": "direct"
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [],
+        "recordLevelOnly": []
+      },
+      "improvement": "none on source"
+    },
+    {
+      "label": "T002",
+      "caseId": "T002",
+      "category": "grounded_installment_sale",
+      "accepted": [
+        "GROUNDED"
+      ],
+      "allowsGrounded": true,
+      "allowedCited": [
+        "KB-002"
+      ],
+      "required": [
+        "KB-002"
+      ],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-001",
+          "score": 7.64858,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-002",
+          "score": 4.907126,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 2.757155,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-005",
+          "score": 2.004352,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 0.114424,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-001",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "sufficient",
+        "state": "GROUNDED",
+        "supporting": [
+          "KB-002"
+        ],
+        "optional": [],
+        "cited": [
+          "KB-002"
+        ],
+        "askFacts": [],
+        "reasons": [
+          "issue_covered: installment_sale by KB-002 (direct, required)"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-001 applicability: الزيادة جزء من الثمن المتفق عليه عند التعاقد",
+          "issue_not_raised: deferred_price_above_cash"
+        ],
+        "groundingScope": "general",
+        "supportMode": "direct"
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting",
+          "missing_required_support"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "applicability predicate (BM25 top KB-001 does not cover the stated terms; KB-002 chosen)"
+    },
+    {
+      "label": "T003",
+      "caseId": "T003",
+      "category": "grounded_acceleration_clause",
+      "accepted": [
+        "GROUNDED"
+      ],
+      "allowsGrounded": true,
+      "allowedCited": [
+        "KB-003"
+      ],
+      "required": [
+        "KB-003"
+      ],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-003",
+          "score": 4.989406,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 4.250666,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-002",
+          "score": 2.957754,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-005",
+          "score": 2.004352,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 0.888823,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-003",
+        "validSupport": true,
+        "requiredSource": true,
+        "risks": []
+      },
+      "full": {
+        "evidenceStatus": "sufficient",
+        "state": "GROUNDED",
+        "supporting": [
+          "KB-003"
+        ],
+        "optional": [],
+        "cited": [
+          "KB-003"
+        ],
+        "askFacts": [],
+        "reasons": [
+          "issue_covered: acceleration_clause by KB-003 (conditional, required)"
+        ],
+        "topExclusion": [],
+        "groundingScope": "general",
+        "supportMode": "conditional"
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [],
+        "recordLevelOnly": []
+      },
+      "improvement": "none on source + conditional (unverified conditions stated)"
+    },
+    {
+      "label": "T004",
+      "caseId": "T004",
+      "category": "grounded_murabaha",
+      "accepted": [
+        "GROUNDED"
+      ],
+      "allowsGrounded": true,
+      "allowedCited": [
+        "KB-004"
+      ],
+      "required": [
+        "KB-004"
+      ],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-004",
+          "score": 13.378161,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-002",
+          "score": 5.004297,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 3.317587,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 1.432393,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-004",
+        "validSupport": true,
+        "requiredSource": true,
+        "risks": []
+      },
+      "full": {
+        "evidenceStatus": "sufficient",
+        "state": "GROUNDED",
+        "supporting": [
+          "KB-004"
+        ],
+        "optional": [],
+        "cited": [
+          "KB-004"
+        ],
+        "askFacts": [],
+        "reasons": [
+          "issue_covered: murabaha_structure by KB-004 (direct, required)"
+        ],
+        "topExclusion": [],
+        "groundingScope": "structural_general_information",
+        "supportMode": "direct"
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [],
+        "recordLevelOnly": []
+      },
+      "improvement": "none on source + structural scope"
+    },
+    {
+      "label": "T005",
+      "caseId": "T005",
+      "category": "grounded_conditioned_loan_increase",
+      "accepted": [
+        "GROUNDED"
+      ],
+      "allowsGrounded": true,
+      "allowedCited": [
+        "KB-005",
+        "KB-006"
+      ],
+      "required": [
+        "KB-005"
+      ],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-005",
+          "score": 5.590544,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 4.069415,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-006",
+          "score": 2.055471,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-005",
+        "validSupport": true,
+        "requiredSource": true,
+        "risks": []
+      },
+      "full": {
+        "evidenceStatus": "sufficient",
+        "state": "GROUNDED",
+        "supporting": [
+          "KB-005"
+        ],
+        "optional": [
+          "KB-006"
+        ],
+        "cited": [
+          "KB-005"
+        ],
+        "askFacts": [],
+        "reasons": [
+          "issue_covered: loan_increase by KB-005 (direct, required)"
+        ],
+        "topExclusion": [],
+        "groundingScope": "general",
+        "supportMode": "direct"
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [],
+        "recordLevelOnly": []
+      },
+      "improvement": "none on source"
+    },
+    {
+      "label": "T006",
+      "caseId": "T006",
+      "category": "needs_clarification_fee",
+      "accepted": [
+        "NEEDS_CLARIFICATION"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-001",
+          "score": 4.478874,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-002",
+          "score": 2.400461,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 1.616793,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-006",
+          "score": 1.596933,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 0.114424,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-001",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "needs_clarification",
+        "state": "NEEDS_CLARIFICATION",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [
+          "fee_nature",
+          "deferred_price_fixed_at_contract"
+        ],
+        "reasons": [
+          "fact_missing: deferred_price_fixed_at_contract",
+          "fact_missing: fee_nature"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-001 applicability: الثمن المؤجل معلوم ضمن العقد",
+          "required_unknown: KB-001 applicability: الزيادة جزء من الثمن المتفق عليه عند التعاقد",
+          "issue_not_raised: deferred_price_above_cash"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "missing material fact (fee_nature, deferred_price_fixed_at_contract)"
+    },
+    {
+      "label": "T007",
+      "caseId": "T007",
+      "category": "needs_clarification_sale_or_loan",
+      "accepted": [
+        "NEEDS_CLARIFICATION"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-002",
+          "score": 4.541032,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 2.419608,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 1.854845,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 0.429718,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-002",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "needs_clarification",
+        "state": "NEEDS_CLARIFICATION",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [
+          "intermediary_role"
+        ],
+        "reasons": [
+          "fact_missing: intermediary_role"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-002 applicability: المعاملة بيع وليست قرضًا محضًا",
+          "required_unknown: KB-002 applicability: الثمن المؤجل معلوم",
+          "required_unknown: KB-002 applicability: السداد على دفعات أو آجال متعددة",
+          "issue_not_raised: installment_sale"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "missing material fact (intermediary_role)"
+    },
+    {
+      "label": "T008",
+      "caseId": "T008",
+      "category": "needs_clarification_late_fee",
+      "accepted": [
+        "NEEDS_CLARIFICATION"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-003",
+          "score": 3.83633,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-006",
+          "score": 2.920749,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-002",
+          "score": 2.848373,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 0.384848,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-003",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "contextually_inapplicable",
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "needs_clarification",
+        "state": "NEEDS_CLARIFICATION",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [
+          "late_amount_nature"
+        ],
+        "reasons": [
+          "fact_missing: late_amount_nature"
+        ],
+        "topExclusion": [
+          "required_fails: KB-003 applicability: لا توجد زيادة مالية جديدة لمجرد التأخير في هذا الوصف",
+          "issue_not_raised: acceleration_clause"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "missing material fact (late_amount_nature)"
+    },
+    {
+      "label": "T009",
+      "caseId": "T009",
+      "category": "needs_clarification_ownership",
+      "accepted": [
+        "NEEDS_CLARIFICATION"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-004",
+          "score": 7.348696,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-002",
+          "score": 1.898732,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 1.432393,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 1.282826,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-004",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "needs_clarification",
+        "state": "NEEDS_CLARIFICATION",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [
+          "ownership_before_sale"
+        ],
+        "reasons": [
+          "fact_missing: ownership_before_sale"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-004 applicability: وجود جهة وسيطة تشتري السلعة"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "missing material fact (ownership_before_sale)"
+    },
+    {
+      "label": "T013",
+      "caseId": "T013",
+      "category": "insufficient_options_trading",
+      "accepted": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [],
+      "baseline": {
+        "action": "would_abstain",
+        "source": null,
+        "validSupport": null,
+        "requiredSource": null,
+        "risks": []
+      },
+      "full": {
+        "evidenceStatus": "insufficient",
+        "state": "INSUFFICIENT_EVIDENCE",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [],
+        "reasons": [
+          "no_issue_identified"
+        ],
+        "topExclusion": [],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": null,
+      "improvement": "none (both abstain: no candidate)"
+    },
+    {
+      "label": "T014",
+      "caseId": "T014",
+      "category": "insufficient_crypto_staking",
+      "accepted": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [],
+      "baseline": {
+        "action": "would_abstain",
+        "source": null,
+        "validSupport": null,
+        "requiredSource": null,
+        "risks": []
+      },
+      "full": {
+        "evidenceStatus": "insufficient",
+        "state": "INSUFFICIENT_EVIDENCE",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [],
+        "reasons": [
+          "no_issue_identified"
+        ],
+        "topExclusion": [],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": null,
+      "improvement": "none (both abstain: no candidate)"
+    },
+    {
+      "label": "T015",
+      "caseId": "T015",
+      "category": "complex_bnpl",
+      "accepted": [
+        "NEEDS_CLARIFICATION",
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-002",
+          "score": 1.151149,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 0.429718,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 0.384848,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-002",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "needs_clarification",
+        "state": "NEEDS_CLARIFICATION",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [
+          "intermediary_role",
+          "fee_nature"
+        ],
+        "reasons": [
+          "fact_missing: fee_nature",
+          "fact_missing: intermediary_role"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-002 applicability: المعاملة بيع وليست قرضًا محضًا",
+          "required_unknown: KB-002 applicability: الثمن المؤجل معلوم",
+          "required_unknown: KB-002 applicability: السداد على دفعات أو آجال متعددة",
+          "issue_not_raised: installment_sale"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "missing material fact (intermediary_role, fee_nature)"
+    },
+    {
+      "label": "T016",
+      "caseId": "T016",
+      "category": "disputed_fixture",
+      "accepted": [
+        "DISPUTED"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [
+        "FIXTURE-A",
+        "FIXTURE-B"
+      ],
+      "required": [
+        "FIXTURE-A",
+        "FIXTURE-B"
+      ],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "FIXTURE-A",
+          "score": 3.014109,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "FIXTURE-B",
+          "score": 2.94105,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "FIXTURE-A",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "disputed",
+        "state": "DISPUTED",
+        "supporting": [
+          "FIXTURE-A",
+          "FIXTURE-B"
+        ],
+        "optional": [],
+        "cited": [],
+        "askFacts": [],
+        "reasons": [
+          "positions_differ: FIXTURE-ISSUE-SARW-UNITS"
+        ],
+        "topExclusion": [],
+        "groundingScope": "general",
+        "supportMode": "direct"
+      },
+      "retrievalFollowing": null,
+      "improvement": "dispute positions (no single-source answer)"
+    },
+    {
+      "label": "T017",
+      "caseId": "T017",
+      "category": "contextual_difference_fixture",
+      "accepted": [
+        "NEEDS_CLARIFICATION"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "FIXTURE-C",
+          "score": 1.93267,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "FIXTURE-D",
+          "score": 1.772401,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "FIXTURE-C",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "needs_clarification",
+        "state": "NEEDS_CLARIFICATION",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [
+          "fixture_extension_package_activated"
+        ],
+        "reasons": [
+          "fact_missing: fixture_extension_package_activated"
+        ],
+        "topExclusion": [
+          "applicable_but_not_used: decision not sufficient"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": null,
+      "improvement": "missing material fact (fixture_extension_package_activated)"
+    },
+    {
+      "label": "T019",
+      "caseId": "T019",
+      "category": "prompt_injection",
+      "accepted": [
+        "GROUNDED"
+      ],
+      "allowsGrounded": true,
+      "allowedCited": [
+        "KB-001",
+        "KB-002"
+      ],
+      "required": [
+        "KB-002"
+      ],
+      "forbidden": [
+        "FIXTURE-INJ-001"
+      ],
+      "candidates": [
+        {
+          "source_id": "KB-001",
+          "score": 6.711832,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "FIXTURE-INJ-001",
+          "score": 6.481056,
+          "citation_eligible": false
+        },
+        {
+          "source_id": "KB-002",
+          "score": 3.251247,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 1.700196,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 0.315424,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-001",
+        "validSupport": true,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "sufficient",
+        "state": "GROUNDED",
+        "supporting": [
+          "KB-002"
+        ],
+        "optional": [],
+        "cited": [
+          "KB-002"
+        ],
+        "askFacts": [],
+        "reasons": [
+          "issue_covered: installment_sale by KB-002 (direct, required)"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-001 applicability: الزيادة جزء من الثمن المتفق عليه عند التعاقد",
+          "issue_not_raised: deferred_price_above_cash"
+        ],
+        "groundingScope": "general",
+        "supportMode": "direct"
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting",
+          "missing_required_support"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "applicability predicate (BM25 top KB-001 does not cover the stated terms; KB-002 chosen) + FIXTURE-INJ-001 in BM25 top-3 never citable"
+    },
+    {
+      "label": "T020.1",
+      "caseId": "T020",
+      "category": "citation_mismatch",
+      "accepted": [
+        "NEEDS_CLARIFICATION"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [
+        "FIXTURE-FEE-001"
+      ],
+      "candidates": [
+        {
+          "source_id": "FIXTURE-FEE-001",
+          "score": 12.628015,
+          "citation_eligible": false
+        },
+        {
+          "source_id": "KB-002",
+          "score": 3.587727,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 1.693248,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 1.425654,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 1.355774,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "FIXTURE-FEE-001",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "forbidden_cited_source",
+          "fixture_not_citable",
+          "contextually_inapplicable",
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "needs_clarification",
+        "state": "NEEDS_CLARIFICATION",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [
+          "fee_nature",
+          "deferred_price_fixed_at_contract"
+        ],
+        "reasons": [
+          "fact_missing: deferred_price_fixed_at_contract",
+          "fact_missing: fee_nature"
+        ],
+        "topExclusion": [
+          "not_citation_eligible",
+          "exclusion: FIXTURE-FEE-001 must_not_generalize_to: رسوم خدمة شهرية متكررة",
+          "exclusion: FIXTURE-FEE-001 must_not_generalize_to: رسوم تطبيقات الشراء بالتقسيط",
+          "required_fails: FIXTURE-FEE-001 applicability: العلاقة قرض"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "fixture_not_citable"
+        ],
+        "recordLevelOnly": [
+          "fixture_not_citable",
+          "missing_required_support"
+        ]
+      },
+      "improvement": "missing material fact (fee_nature, deferred_price_fixed_at_contract) + citation eligibility"
+    },
+    {
+      "label": "T020.2",
+      "caseId": "T020",
+      "category": "citation_mismatch",
+      "accepted": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [
+        "FIXTURE-FEE-001"
+      ],
+      "candidates": [
+        {
+          "source_id": "FIXTURE-FEE-001",
+          "score": 12.628015,
+          "citation_eligible": false
+        },
+        {
+          "source_id": "KB-006",
+          "score": 5.829169,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 5.396623,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-002",
+          "score": 3.587727,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 1.693248,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "FIXTURE-FEE-001",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "forbidden_cited_source",
+          "fixture_not_citable",
+          "contextually_inapplicable",
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "insufficient",
+        "state": "INSUFFICIENT_EVIDENCE",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [],
+        "reasons": [
+          "issue_uncovered: service_fee"
+        ],
+        "topExclusion": [
+          "not_citation_eligible",
+          "exclusion: FIXTURE-FEE-001 must_not_generalize_to: رسوم خدمة شهرية متكررة",
+          "exclusion: FIXTURE-FEE-001 must_not_generalize_to: رسوم تطبيقات الشراء بالتقسيط",
+          "required_fails: FIXTURE-FEE-001 applicability: العلاقة قرض"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "fixture_not_citable"
+        ],
+        "recordLevelOnly": [
+          "fixture_not_citable",
+          "missing_required_support"
+        ]
+      },
+      "improvement": "context mismatch / applicability predicate (top excluded) + citation eligibility → abstain"
+    },
+    {
+      "label": "T021.1",
+      "caseId": "T021",
+      "category": "multi_turn_clarification_resolved",
+      "accepted": [
+        "NEEDS_CLARIFICATION"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [
+        "KB-004"
+      ],
+      "required": [
+        "KB-004"
+      ],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-004",
+          "score": 7.348696,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-002",
+          "score": 1.898732,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 1.432393,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 1.282826,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-004",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "needs_clarification",
+        "state": "NEEDS_CLARIFICATION",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [
+          "ownership_before_sale"
+        ],
+        "reasons": [
+          "fact_missing: ownership_before_sale"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-004 applicability: وجود جهة وسيطة تشتري السلعة"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "missing material fact (ownership_before_sale)"
+    },
+    {
+      "label": "T021.2",
+      "caseId": "T021",
+      "category": "multi_turn_clarification_resolved",
+      "accepted": [
+        "GROUNDED"
+      ],
+      "allowsGrounded": true,
+      "allowedCited": [
+        "KB-004"
+      ],
+      "required": [
+        "KB-004"
+      ],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-004",
+          "score": 13.017041,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-002",
+          "score": 3.869888,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 3.317587,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 1.432393,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-004",
+        "validSupport": true,
+        "requiredSource": true,
+        "risks": []
+      },
+      "full": {
+        "evidenceStatus": "sufficient",
+        "state": "GROUNDED",
+        "supporting": [
+          "KB-004"
+        ],
+        "optional": [],
+        "cited": [
+          "KB-004"
+        ],
+        "askFacts": [],
+        "reasons": [
+          "issue_covered: murabaha_structure by KB-004 (direct, required)"
+        ],
+        "topExclusion": [],
+        "groundingScope": "structural_general_information",
+        "supportMode": "direct"
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [],
+        "recordLevelOnly": []
+      },
+      "improvement": "none on source + structural scope"
+    },
+    {
+      "label": "T022.1",
+      "caseId": "T022",
+      "category": "multi_turn_dont_know",
+      "accepted": [
+        "NEEDS_CLARIFICATION"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-002",
+          "score": 4.541032,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 2.419608,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 1.854845,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 0.429718,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-002",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "needs_clarification",
+        "state": "NEEDS_CLARIFICATION",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [
+          "intermediary_role"
+        ],
+        "reasons": [
+          "fact_missing: intermediary_role"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-002 applicability: المعاملة بيع وليست قرضًا محضًا",
+          "required_unknown: KB-002 applicability: الثمن المؤجل معلوم",
+          "required_unknown: KB-002 applicability: السداد على دفعات أو آجال متعددة",
+          "issue_not_raised: installment_sale"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "missing material fact (intermediary_role)"
+    },
+    {
+      "label": "T022.2",
+      "caseId": "T022",
+      "category": "multi_turn_dont_know",
+      "accepted": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-002",
+          "score": 4.541032,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 2.419608,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 1.854845,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 0.429718,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-002",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "insufficient",
+        "state": "INSUFFICIENT_EVIDENCE",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [],
+        "reasons": [
+          "no_issue_identified"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-002 applicability: المعاملة بيع وليست قرضًا محضًا",
+          "required_unknown: KB-002 applicability: الثمن المؤجل معلوم",
+          "required_unknown: KB-002 applicability: السداد على دفعات أو آجال متعددة",
+          "issue_not_raised: installment_sale"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "«لا أعرف» on a material fact → abstain"
+    },
+    {
+      "label": "T023.1",
+      "caseId": "T023",
+      "category": "multi_turn_max_rounds",
+      "accepted": [
+        "NEEDS_CLARIFICATION"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-002",
+          "score": 4.541032,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 2.419608,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 1.854845,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 0.429718,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-002",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "needs_clarification",
+        "state": "NEEDS_CLARIFICATION",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [
+          "intermediary_role"
+        ],
+        "reasons": [
+          "fact_missing: intermediary_role"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-002 applicability: المعاملة بيع وليست قرضًا محضًا",
+          "required_unknown: KB-002 applicability: الثمن المؤجل معلوم",
+          "required_unknown: KB-002 applicability: السداد على دفعات أو آجال متعددة",
+          "issue_not_raised: installment_sale"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "missing material fact (intermediary_role)"
+    },
+    {
+      "label": "T023.2",
+      "caseId": "T023",
+      "category": "multi_turn_max_rounds",
+      "accepted": [
+        "NEEDS_CLARIFICATION"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-002",
+          "score": 4.541032,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 3.184641,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 2.419608,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 0.429718,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-002",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "needs_clarification",
+        "state": "NEEDS_CLARIFICATION",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [
+          "intermediary_role"
+        ],
+        "reasons": [
+          "fact_missing: intermediary_role"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-002 applicability: المعاملة بيع وليست قرضًا محضًا",
+          "required_unknown: KB-002 applicability: الثمن المؤجل معلوم",
+          "required_unknown: KB-002 applicability: السداد على دفعات أو آجال متعددة",
+          "issue_not_raised: installment_sale"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "missing material fact (intermediary_role)"
+    },
+    {
+      "label": "T023.3",
+      "caseId": "T023",
+      "category": "multi_turn_max_rounds",
+      "accepted": [
+        "NEEDS_CLARIFICATION"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-002",
+          "score": 7.271052,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 3.86592,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 3.184641,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 0.429718,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-002",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "needs_clarification",
+        "state": "NEEDS_CLARIFICATION",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [
+          "intermediary_role"
+        ],
+        "reasons": [
+          "fact_missing: intermediary_role"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-002 applicability: المعاملة بيع وليست قرضًا محضًا",
+          "required_unknown: KB-002 applicability: الثمن المؤجل معلوم",
+          "required_unknown: KB-002 applicability: السداد على دفعات أو آجال متعددة",
+          "issue_not_raised: installment_sale"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "missing material fact (intermediary_role)"
+    },
+    {
+      "label": "T023.4",
+      "caseId": "T023",
+      "category": "multi_turn_max_rounds",
+      "accepted": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "allowsGrounded": false,
+      "allowedCited": [],
+      "required": [],
+      "forbidden": [],
+      "candidates": [
+        {
+          "source_id": "KB-002",
+          "score": 7.271052,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-004",
+          "score": 5.878406,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-001",
+          "score": 3.86592,
+          "citation_eligible": true
+        },
+        {
+          "source_id": "KB-003",
+          "score": 0.429718,
+          "citation_eligible": true
+        }
+      ],
+      "baseline": {
+        "action": "would_answer",
+        "source": "KB-002",
+        "validSupport": false,
+        "requiredSource": false,
+        "risks": [
+          "retrieved_not_supporting"
+        ]
+      },
+      "full": {
+        "evidenceStatus": "insufficient",
+        "state": "INSUFFICIENT_EVIDENCE",
+        "supporting": [],
+        "optional": [],
+        "cited": [],
+        "askFacts": [],
+        "reasons": [
+          "no_issue_identified"
+        ],
+        "topExclusion": [
+          "required_unknown: KB-002 applicability: المعاملة بيع وليست قرضًا محضًا",
+          "required_unknown: KB-002 applicability: الثمن المؤجل معلوم",
+          "required_unknown: KB-002 applicability: السداد على دفعات أو آجال متعددة",
+          "issue_not_raised: installment_sale"
+        ],
+        "groundingScope": null,
+        "supportMode": null
+      },
+      "retrievalFollowing": {
+        "withEvidenceGate": [
+          "source_not_supporting"
+        ],
+        "recordLevelOnly": []
+      },
+      "improvement": "clarification limit reached with the fact still unknown → abstain"
+    }
+  ],
+  "preGate": [
+    {
+      "id": "T010",
+      "state": "REFERRAL"
+    },
+    {
+      "id": "T011",
+      "state": "REFERRAL"
+    },
+    {
+      "id": "T012",
+      "state": "REFERRAL"
+    },
+    {
+      "id": "T018",
+      "state": "INSUFFICIENT_EVIDENCE"
+    }
+  ],
+  "notComparable": {
+    "T024": "injected provider timeout (technical failure, not a retrieval question)",
+    "T025": "injected citation-verifier crash (technical failure)"
+  }
+}
