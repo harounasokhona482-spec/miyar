@@ -194,11 +194,12 @@ export function Block({ title, children, tone = "plain", aside }: { title: strin
   );
 }
 
-const HOW = [
-  { title: "نفهم", text: "نستخرج من وصفك عناصر المعاملة: الأطراف وطريقة الدفع والأجل والرسوم، ونحدد ما لم يُذكر." },
-  { title: "نستوضح", text: "إذا نقصت معلومة قد تغيّر النتيجة، نسألك سؤالًا واحدًا في كل مرة، وثلاثة أسئلة كحد أقصى. و«لا أعرف» إجابة مقبولة." },
-  { title: "نبحث", text: "نبحث في المصادر المعتمدة داخل مِعيار فقط، لا في الإنترنت." },
-  { title: "نوثّق", text: "لا نعرض إجابة إلا إذا كفى الدليل، ونتحقق من أن كل نص نعرضه موجود في مصدره. وإن لم يكفِ الدليل امتنعنا عن الإجابة." },
+// Owner-approved content of «كيف يعمل مِعيار؟» (fixed texts: do not paraphrase).
+export const HOW_IT_WORKS = [
+  "يفهم مِعيار وصف المعاملة ويستخرج عناصرها الأساسية.",
+  "يسأل فقط عن التفاصيل التي قد تؤثر في فهم المعاملة أو انطباق المصدر.",
+  "يبحث في المصادر المعتمدة ويتحقق من كفاية الدليل.",
+  "يعرض ما تدعمه المصادر، أو يمتنع عن الإجابة إذا لم يكن الدليل كافيًا.",
 ];
 
 export function HowItWorksDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -227,21 +228,14 @@ export function HowItWorksDialog({ open, onClose }: { open: boolean; onClose: ()
           </button>
         </div>
         <ol className="flex flex-col gap-3">
-          {HOW.map((s, i) => (
-            <li key={s.title} className="flex gap-3">
+          {HOW_IT_WORKS.map((text, i) => (
+            <li key={text} className="flex items-start gap-3">
               <span className="grid size-7 shrink-0 place-items-center rounded-full bg-surface font-display text-sm font-semibold">{arNum(i + 1)}</span>
-              <div>
-                <p className="font-display font-semibold">{s.title}</p>
-                <p className="text-sm leading-7 text-ink-soft">{s.text}</p>
-              </div>
+              <p className="pt-0.5 text-[14.5px] leading-7 text-ink">{text}</p>
             </li>
           ))}
         </ol>
-        <div className="rounded-xl bg-surface p-3.5 text-sm leading-7">
-          <p className="font-display font-semibold">حدود الأداة</p>
-          <p>{PRODUCT_DISCLAIMER}</p>
-          <p>لا يحكم على عقد بعينه، ولا يرجّح بين الآراء.</p>
-        </div>
+        <p className="rounded-xl bg-surface p-3.5 text-sm leading-7 text-ink-soft">{PRODUCT_DISCLAIMER}</p>
       </div>
     </dialog>
   );

@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { INSUFFICIENT_EVIDENCE_MESSAGE, OUT_OF_SCOPE_MESSAGE, UNSUPPORTED_LANGUAGE_MESSAGE } from "../../domain/messages";
+import { HOW_IT_WORKS } from "./parts";
 import {
   CONDITION_PREFIX,
   CONDITIONS_INTRO,
+  SUMMARY_DISPUTED,
   arNum,
   excerptShownOnCard,
   insufficientKind,
@@ -52,12 +54,24 @@ describe("presenters", () => {
     expect(splitLimitations(["حد ١", CONDITIONS_INTRO])).toEqual({ conditions: [], other: ["حد ١", CONDITIONS_INTRO] });
   });
 
-  it("states the scope: structural answers are a description, never a ruling", () => {
-    expect(scopeView(answer()).badge).toBe("معلومة عامة موثقة");
-    expect(scopeView(answer({ answer_scope: "conditional_general_information" })).conditional).toBe(true);
+  it("uses the owner's fixed summary sentence for each answer scope, verbatim", () => {
+    expect(scopeView(answer()).summary).toBe("وجد مِعيار في المصادر المعتمدة ما يكفي لعرض معلومة عامة موثقة حول هذه المعاملة.");
+    const c = scopeView(answer({ answer_scope: "conditional_general_information" }));
+    expect(c.conditional).toBe(true);
+    expect(c.summary).toBe("وجد مِعيار مادة موثقة ذات صلة، لكن انطباقها على الحالة يعتمد على معلومات أو شروط لم تُحسم بعد.");
     const s = scopeView(answer({ answer_scope: "structural_general_information" }));
     expect(s.heading).toBe("وصف بنية المعاملة");
-    expect(s.summary).toContain("ليس حكمًا");
+    expect(s.summary).toBe("توضح المصادر المعتمدة بنية هذه الصورة من المعاملة، دون أن يعني ذلك الحكم على صحة المعاملة أو جوازها.");
+    expect(SUMMARY_DISPUTED).toBe("توجد في المصادر المعتمدة معالجات مختلفة لهذه المسألة، ويعرضها مِعيار مع مصادرها دون ترجيح مستقل.");
+  });
+
+  it("shows the owner's approved «كيف يعمل مِعيار؟» content, verbatim", () => {
+    expect(HOW_IT_WORKS).toEqual([
+      "يفهم مِعيار وصف المعاملة ويستخرج عناصرها الأساسية.",
+      "يسأل فقط عن التفاصيل التي قد تؤثر في فهم المعاملة أو انطباق المصدر.",
+      "يبحث في المصادر المعتمدة ويتحقق من كفاية الدليل.",
+      "يعرض ما تدعمه المصادر، أو يمتنع عن الإجابة إذا لم يكن الدليل كافيًا.",
+    ]);
   });
 
   it("numbers sources in the answer's order and hides an excerpt a claim already quotes", () => {

@@ -42,33 +42,22 @@ export function splitLimitations(limitations: readonly string[]): { conditions: 
 
 export type ScopeView = { badge: string; summary: string; heading: string; structural: boolean; conditional: boolean };
 
+// Owner-approved summary sentences (fixed texts: do not paraphrase). They state
+// what the sources support, never a jurisprudential conclusion of the interface.
+export const SUMMARY_DIRECT = "وجد مِعيار في المصادر المعتمدة ما يكفي لعرض معلومة عامة موثقة حول هذه المعاملة.";
+export const SUMMARY_CONDITIONAL = "وجد مِعيار مادة موثقة ذات صلة، لكن انطباقها على الحالة يعتمد على معلومات أو شروط لم تُحسم بعد.";
+export const SUMMARY_STRUCTURAL = "توضح المصادر المعتمدة بنية هذه الصورة من المعاملة، دون أن يعني ذلك الحكم على صحة المعاملة أو جوازها.";
+export const SUMMARY_DISPUTED = "توجد في المصادر المعتمدة معالجات مختلفة لهذه المسألة، ويعرضها مِعيار مع مصادرها دون ترجيح مستقل.";
+
 /** Fixed wording per answer scope: the badge, the one-line summary and the heading of the sources' content. */
 export function scopeView(a: Answer): ScopeView {
   switch (a.answer_scope) {
     case "structural_general_information":
-      return {
-        badge: "وصف موثق لبنية المعاملة",
-        summary: "تصف المصادر المعتمدة بنية هذا النوع من المعاملات وأطرافه وتسلسله، وهذا وصف وليس حكمًا على صحة المعاملة.",
-        heading: "وصف بنية المعاملة",
-        structural: true,
-        conditional: false,
-      };
+      return { badge: "وصف موثق لبنية المعاملة", summary: SUMMARY_STRUCTURAL, heading: "وصف بنية المعاملة", structural: true, conditional: false };
     case "conditional_general_information":
-      return {
-        badge: "معلومة عامة مشروطة",
-        summary: "وجدنا في المصادر المعتمدة معلومات عامة قد تتصل بمعاملتك، لكن انطباقها عليها يعتمد على شروط لم نتحقق منها.",
-        heading: "ماذا تفيد المصادر؟",
-        structural: false,
-        conditional: true,
-      };
+      return { badge: "معلومة عامة مشروطة", summary: SUMMARY_CONDITIONAL, heading: "ماذا تفيد المصادر؟", structural: false, conditional: true };
     default:
-      return {
-        badge: "معلومة عامة موثقة",
-        summary: "وجدنا في المصادر المعتمدة معلومات عامة تتناول هذا النوع من المعاملات، ونعرضها مع نصوصها.",
-        heading: "ماذا تفيد المصادر؟",
-        structural: false,
-        conditional: false,
-      };
+      return { badge: "معلومة عامة موثقة", summary: SUMMARY_DIRECT, heading: "ماذا تفيد المصادر؟", structural: false, conditional: false };
   }
 }
 

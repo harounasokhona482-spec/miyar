@@ -2,7 +2,19 @@
 
 import { useState } from "react";
 import { Block, Cite, SourceCard, SourceQuote, StatusBadge, StepBar, btn } from "./parts";
-import { arNum, excerptShownOnCard, insufficientKind, scopeView, sourceNumbers, sourcesCount, splitLimitations, type Grounded, type Settled } from "./presenters";
+import {
+  CONDITIONS_INTRO,
+  SUMMARY_DISPUTED,
+  arNum,
+  excerptShownOnCard,
+  insufficientKind,
+  scopeView,
+  sourceNumbers,
+  sourcesCount,
+  splitLimitations,
+  type Grounded,
+  type Settled,
+} from "./presenters";
 
 type Actions = { onNew: () => void; onEdit: () => void; onRetry: () => void; busy: boolean };
 
@@ -109,7 +121,7 @@ function GroundedResult({ r, onNew, onEdit }: { r: Grounded } & Actions) {
         <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-2">
           {conditions.length > 0 && (
             <Block title="ما الذي يعتمد عليه انطباق هذه المعلومة؟" tone="dashed">
-              <p className="text-[14px] leading-7 text-ink-soft">تنطبق المعلومة السابقة على حالتك فقط إذا تحققت هذه الشروط، ولم نتحقق منها:</p>
+              <p className="text-[14px] leading-7 text-ink-soft">{CONDITIONS_INTRO}</p>
               <ul className="list-disc pr-5 text-[14px] leading-7">
                 {conditions.map((c) => (
                   <li key={c}>{c}</li>
@@ -153,7 +165,7 @@ function DisputedResult({ r, onNew }: { r: Extract<Settled, { state: "DISPUTED" 
       <StepBar step={4} />
       <StatusBadge kind="disputed" label="فيها أكثر من رأي معتبر" />
       <h1 data-screen-title tabIndex={-1} className={`${titleClass} text-[1.15rem]`}>
-        {r.message}
+        {SUMMARY_DISPUTED}
       </h1>
       <ul className="grid gap-3 sm:grid-cols-2">
         {r.positions.map((p, i) => (
@@ -235,7 +247,6 @@ function InsufficientResult({ message, onNew, onEdit }: { message: string } & Ac
       <h1 data-screen-title tabIndex={-1} className={`${titleClass} text-[1.15rem]`}>
         {message}
       </h1>
-      {kind === "evidence" && <p className="text-[14.5px] leading-7 text-ink-soft">فضّلنا ألا نجيب على أن نقدم إجابة غير مدعومة.</p>}
       <div className="flex flex-col gap-2.5">
         <button type="button" onClick={onEdit} className={btn.primary}>
           أعد صياغة الوصف
